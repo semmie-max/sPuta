@@ -21,6 +21,13 @@ app.add_middleware(
 
 client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+import re
+
+def clean_reply(message):
+    text = message.content or ""
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return text.strip()
+
 SYSTEM = """You are a patient, friendly teacher. Your job is to take complex text and explain it simply as if talking to a curious young child who has never heard these words before.
 
 Rules:
@@ -54,7 +61,7 @@ async def chat(
         max_tokens=1024,
     )
 
-    reply = response.choices[0].message.content
+    reply = clean_reply(response.choices[0].message)
     return {"reply": reply}
 
 
@@ -107,6 +114,7 @@ async def read_image(
 
         response = client.chat.completions.create(
             model="qwen/qwen3.6-27b",
+            reasoning_format="hidden",
             messages=[
                 {
                     "role": "user",
@@ -127,7 +135,7 @@ async def read_image(
             max_tokens=1024,
         )
 
-        reply = response.choices[0].message.content
+        reply = clean_reply(response.choices[0].message)
         return {"reply": reply}
 
     except Exception as e:
@@ -172,7 +180,7 @@ If this document contains mathematical or physics equations, formulas or express
             max_tokens=2048,
         )
 
-        reply = response.choices[0].message.content
+        reply = clean_reply(response.choices[0].message)
         return {"reply": reply}
 
     except Exception as e:
