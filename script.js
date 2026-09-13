@@ -74,7 +74,8 @@ let pendingLabel = null;
 let lastEnhanceOriginal = "";
 const historyList=$("history-list");
 const chatTitleEl=$("chat-title");
-const toastEl   = $("toast");
+const toastStack    = $("toast-stack");
+const toastTemplate = $("toast-template");
 const newChatBtn= $("new-chat");
 const clearAllBtn=$("clear-all");
 const exportBtn = $("export-btn");
@@ -90,7 +91,6 @@ let pendingFile = null;
 let isStreaming = false;
 let lightMode   = false;
 let saveTimer   = null;
-let toastTimer  = null;
 
 onAuthStateChanged(auth, async user => {
   loadingEl.style.display = "none";
@@ -854,9 +854,68 @@ function removeTyping() {
 }
 function safe(html) { return window.DOMPurify?DOMPurify.sanitize(html):html.replace(/<script[\s\S]*?<\/script>/gi,""); }
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
-function toast(msg, ok=false) {
-  toastEl.textContent=msg; toastEl.classList.toggle("ok",ok); toastEl.classList.add("show");
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),3200);
+const TOAST_DURATION = 5000;
+
+function toast(title, message, variant) {
+  if (message === undefined || message === true || message === false) {
+    variant = message === true ? "success" : "info";
+    message = title;
+    title = variant === "success" ? "Success" : "Notice";
+  }
+  variant = variant || "info";
+
+  const node = toastTemplate.content.firstElementChild.cloneNode(true);
+  node.classList.add(`toast-${variant}`);
+  node.querySelector(".toast-title").textContent = title;
+  node.querySelector(".toast-desc").textContent = message;
+  const bar = node.querySelector(".toast-timer-bar");
+  const closeBtn = node.querySelector(".toast-close");
+
+  toastStack.appendChild(node);
+  requestAnimationFrame(() => node.classList.add("show"));
+
+  let remaining = TOAST_DURATION;
+  let startedAt = Date.now();
+  let removeTimer = null;
+
+  function runBar(duration) {
+    bar.style.transition = "none";
+    bar.style.width = "100%";
+    void bar.offsetWidth;
+    bar.style.transition = `width ${duration}ms linear`;
+    bar.style.width = "0%";
+  }
+  function scheduleRemoval(duration) {
+    clearTimeout(removeTimer);
+    startedAt = Date.now();
+    removeTimer = setTimeout(dismiss, duration);
+  }
+  function pause() {
+    clearTimeout(removeTimer);
+    const currentWidth = getComputedStyle(bar).width;
+    remaining -= (Date.now() - startedAt);
+    if (remaining < 0) remaining = 0;
+    bar.style.transition = "none";
+    bar.style.width = currentWidth;
+  }
+  function resume() {
+    if (remaining <= 0) { dismiss(); return; }
+    runBar(remaining);
+    scheduleRemoval(remaining);
+  }
+  function dismiss() {
+    clearTimeout(removeTimer);
+    node.classList.remove("show");
+    node.classList.add("hide");
+    node.addEventListener("transitionend", () => node.remove(), { once: true });
+  }
+
+  node.addEventListener("mouseenter", pause);
+  node.addEventListener("mouseleave", resume);
+  closeBtn.addEventListener("click", dismiss);
+
+  runBar(TOAST_DURATION);
+  scheduleRemoval(TOAST_DURATION);
 }
 function requestNotificationPermission() {
   if (!("Notification" in window)) return;
