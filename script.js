@@ -246,7 +246,14 @@ function bindAll() {
   });
   exportBtn.addEventListener("click", exportChat);
   themeBtn.addEventListener("click", toggleTheme);
-  menuBtn.addEventListener("click", () => { sidebar.classList.toggle("open"); overlay.classList.toggle("show"); });
+  menuBtn.addEventListener("click", () => {
+    if (window.innerWidth <= 768) {
+      sidebar.classList.toggle("open");
+      overlay.classList.toggle("show");
+    } else {
+      sidebar.classList.toggle("collapsed");
+    }
+  });
   overlay.addEventListener("click", closeSidebar);
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => {
@@ -752,20 +759,8 @@ function renderIntro() {
   const wrap=document.createElement("div");
   wrap.innerHTML=`
     <div class="intro-wrap">
-      <div class="intro-kicker">Always Simple Language</div>
-      <h1 class="intro-heading">Complicated words.<br><em>Simple Answers.</em></h1>
-      <p class="intro-sub">Upload a file or ask a question. Get an easy-to-understand explanation.</p>
-      <div class="drop-zone" id="intro-drop">
-        <div class="drop-icon">
-          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-          </svg>
-        </div>
-        <div class="drop-title">Drop your File/Image here</div>
-        <div class="drop-sub">or <span id="browse-link">click to browse</span></div>
-      </div>
+      <h1 class="intro-heading">What's on your mind?</h1>
+      <p class="intro-sub">Ask a question or drop a file, image or PDF to get a simple explanation.</p>
       <div class="chips-row">
         <button class="chip">How does a leveraged buyout affect shareholders?</button>
         <button class="chip">What is the role of blockchain in digital identity verification?</button>
@@ -774,16 +769,6 @@ function renderIntro() {
       </div>
     </div>`;
   messagesEl.appendChild(wrap);
-  $("browse-link")?.addEventListener("click",()=>fileInput.click());
-  const dz=$("intro-drop");
-  dz.addEventListener("click",()=>fileInput.click());
-  dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("drag-over");});
-  dz.addEventListener("dragleave",()=>dz.classList.remove("drag-over"));
-  dz.addEventListener("drop",e=>{
-    e.preventDefault(); dz.classList.remove("drag-over");
-    const f=e.dataTransfer?.files?.[0];
-    if(f) handleFile(f);
-  });
   wrap.querySelectorAll(".chip").forEach(c=>{
     c.addEventListener("click",()=>{msgField.textContent=c.textContent;updateFieldEmptyState();msgField.focus();placeCaretAtEnd(msgField);});
   });
