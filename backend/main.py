@@ -25,8 +25,10 @@ import re
 
 def clean_reply(message):
     text = message.content or ""
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    return text.strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    if not text:
+        text = (message.content or "").strip()
+    return text
 
 SYSTEM = """You are a patient, friendly teacher. Your job is to take complex text and explain it simply as if talking to a curious young child who has never heard these words before.
 
@@ -132,7 +134,7 @@ async def read_image(
                     ]
                 }
             ],
-            max_tokens=1024,
+            max_tokens=3072,
         )
 
         reply = clean_reply(response.choices[0].message)
