@@ -18,7 +18,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-const API_URL = "http://127.0.0.1:8000/chat";
+const API_URL = "https://sputa.onrender.com/chat";
 const SYSTEM = `You are a patient, friendly teacher. Your job is to take complex text and explain it simply as if talking to a curious young child who has never heard these words before.
 
 Rules:
