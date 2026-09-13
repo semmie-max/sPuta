@@ -543,6 +543,34 @@ async function handleSend() {
     clearFile(); scheduleSave(activeId);
     await getResponse();
     return;
+  }  if(pendingFile){
+    const fname=pendingFile.name;
+    const isImage = pendingFile.type.startsWith("image/");
+    chats[activeId].title=fname.slice(0,32);
+    chatTitleEl.textContent=chats[activeId].title;
+    renderSidebar();
+
+    if(isImage){
+      isStreaming=true;
+      sendBtn.disabled=true; stopBtn.style.display="inline-block"; retryBtn.style.display="none";
+      const imgFile=pendingFile;
+      clearFile();
+      await sendImageDirect(imgFile);
+      return;
+    }
+
+    addBubble("user",`<strong>Uploaded:</strong> ${esc(fname)}`);
+    let fileText;
+    try { fileText=await extractText(pendingFile); }
+    catch(err){ toast(err.message); clearFile(); return; }
+    chats[activeId].msgs.push({
+      role:"user",
+      content:`The user has uploaded a file called "${fname}". Here is the extracted content:\n\n${fileText}\n\nDo NOT explain it yet. Ask the user what they would like from this document. Give them clear friendly options: a full simple explanation, a short summary, just the key points, or specific questions answered. Be warm and concise.`,
+      _hidden:true
+    });
+    clearFile(); scheduleSave(activeId);
+    await getResponse();
+    return;
   }
 
   addBubble("user", esc(text));
@@ -555,6 +583,30 @@ async function handleSend() {
   }
   scheduleSave(activeId);
   await getResponse();
+}
+
+async function sendImageDirect(file) {
+  addBubble("user", `<strong>Uploaded:</strong> ${esc(file.name)}`);
+  showTyping();
+  const API_BASE = API_URL.replace(/\/chat$/, "");
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const res = await fetch(`${API_BASE}/read-image`, { method: "POST", mode: "cors", body: formData });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
+    finalizeThinking();
+    const reply = data?.reply || "Sorry, I could not read this image.";
+    addBubble("ai", safe(marked.parse(reply)));
+    chats[activeId].msgs.push({role:"user", content:`[Uploaded image: ${file.name}]`, _hidden:true});
+    chats[activeId].msgs.push({role:"assistant", content:reply});
+    scheduleSave(activeId);
+  } catch (err) {
+    removeTyping();
+    addBubble("ai", `Something went wrong reading the image: ${esc(err.message)}`);
+  } finally {
+    isStreaming=false; sendBtn.disabled=false; stopBtn.style.display="none"; retryBtn.style.display="inline-block";
+  }
 }
 
 async function getResponse() {
@@ -586,7 +638,7 @@ const res = await fetch(API_URL, {
 });
 const data=await res.json();
 if(!res.ok) throw new Error(data?.detail||`HTTP ${res.status}`);
-removeTyping();
+finalizeThinking();
 const reply=data?.reply||"Sorry, I could not generate a response.";
     const responseTime = ((Date.now() - responseStart) / 1000).toFixed(1);
 addBubble("ai", safe(marked.parse(reply)), responseTime);
@@ -762,15 +814,76 @@ function addBubble(role, html, responseTime="") {
   messagesEl.appendChild(wrap);
   messagesEl.scrollTop=messagesEl.scrollHeight;
 }
+let thinkingTimer=null, thinkingCycle=null, thinkingStart=0;
+const THINKING_PHRASES=[
+  "Reading your message...",
+  "Thinking it through...",
+  "Looking for the simplest way to say this...",
+  "Choosing easy, everyday words...",
+  "Putting the explanation together..."
+];
+
 function showTyping() {
   removeTyping();
+  thinkingStart = Date.now();
   const el=document.createElement("div");
-  el.id="typing-el"; el.className="typing-wrap";
-  el.innerHTML=`<div class="typing-inner"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div>`;
+  el.id="typing-el"; el.className="tr";
+  el.innerHTML=`
+    <button class="trHeader" id="thinking-header" aria-expanded="true">
+      <span class="trLabel trShimmer" id="thinking-label">Thinking</span>
+      <svg class="trChevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <div class="trCollapsible" id="thinking-collapsible">
+      <div class="trInner">
+        <div class="trViewport">
+          <div class="trStream" id="thinking-stream">
+            <p class="trSentence trShimmer" id="thinking-sentence">${THINKING_PHRASES[0]}</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
   messagesEl.appendChild(el);
   messagesEl.scrollTop=messagesEl.scrollHeight;
+
+  let i=0;
+  thinkingCycle=setInterval(()=>{
+    i=(i+1)%THINKING_PHRASES.length;
+    const sentenceEl=$("thinking-sentence");
+    if(sentenceEl){
+      sentenceEl.style.animation="none";
+      sentenceEl.offsetHeight;
+      sentenceEl.style.animation="";
+      sentenceEl.textContent=THINKING_PHRASES[i];
+    }
+  }, 1600);
 }
-function removeTyping() { $("typing-el")?.remove(); }
+
+function finalizeThinking() {
+  clearInterval(thinkingCycle); thinkingCycle=null;
+  const el=$("typing-el");
+  if(!el) return;
+  const seconds=Math.max(1, Math.round((Date.now()-thinkingStart)/1000));
+  const label=$("thinking-label");
+  const header=$("thinking-header");
+  const collapsible=$("thinking-collapsible");
+  if(label){ label.classList.remove("trShimmer"); label.textContent=`Thought for ${seconds}s`; }
+  if(collapsible) collapsible.classList.add("isCollapsed");
+  if(header){
+    header.classList.add("isClickable");
+    header.setAttribute("aria-expanded","false");
+    header.addEventListener("click", ()=>{
+      const isOpen=header.getAttribute("aria-expanded")==="true";
+      header.setAttribute("aria-expanded", isOpen ? "false" : "true");
+      collapsible.classList.toggle("isCollapsed", isOpen);
+    });
+  }
+  el.id="";
+}
+
+function removeTyping() {
+  clearInterval(thinkingCycle); thinkingCycle=null;
+  $("typing-el")?.remove();
+}
 function safe(html) { return window.DOMPurify?DOMPurify.sanitize(html):html.replace(/<script[\s\S]*?<\/script>/gi,""); }
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 function toast(msg, ok=false) {
