@@ -18,7 +18,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src='https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js'></script>
-<script type="module" src="script.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,7 +30,7 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo"><span>sPutta</span></div>
-    <div class="auth-tagline">Difficult Words, Explained</div>
+    <div class="auth-tagline">Difficult Things, Explained</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login">Sign In</button>
       <button class="auth-tab" id="tab-signup">Get Started</button>
@@ -189,7 +188,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

@@ -18,8 +18,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-const COHERE_KEY = "rpuUWIwS3fKxEtAh4ZsFZWbinkxtKmSGvllRHm7D";
-const COHERE_URL = "https://api.cohere.com/v2/chat";
+const API_URL = "http://127.0.0.1:8000/chat";
 const SYSTEM = `You are a patient, friendly teacher. Your job is to take complex text and explain it simply as if talking to a curious young child who has never heard these words before.
 
 Rules:
@@ -408,20 +407,32 @@ async function getResponse() {
   const responseStart = Date.now();
   sendBtn.disabled=true; stopBtn.style.display="inline-block"; retryBtn.style.display="none";
   showTyping();
-  const messages=[
-    {role:"system", content:SYSTEM},
-    ...chats[activeId].msgs.map(m=>({role:m.role==="user"?"user":"assistant", content:m.content}))
-  ];
+  const messages = chats[activeId].msgs
+    .filter(m => !m._hidden)
+    .map(m => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.content
+    }));
   try {
-    const res=await fetch(COHERE_URL,{
-      method:"POST",
-      headers:{"Authorization":`Bearer ${COHERE_KEY}`,"Content-Type":"application/json","Accept":"application/json"},
-      body:JSON.stringify({model:"command-r-plus-08-2024", messages})
-    });
-    const data=await res.json();
-    if(!res.ok) throw new Error(data?.message||`HTTP ${res.status}`);
-    removeTyping();
-    const reply=data?.message?.content?.[0]?.text||"Sorry, I could not generate a response.";
+    const lastMsg = chats[activeId].msgs.filter(m => !m._hidden).at(-1);
+const formData = new FormData();
+formData.append("message", lastMsg.content);
+formData.append("history", JSON.stringify(
+  chats[activeId].msgs
+    .filter(m => !m._hidden)
+    .slice(0, -1)
+    .map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }))
+));
+
+const res = await fetch(API_URL, {
+  method: "POST",
+  mode: "cors",
+  body: formData
+});
+const data=await res.json();
+if(!res.ok) throw new Error(data?.detail||`HTTP ${res.status}`);
+removeTyping();
+const reply=data?.reply||"Sorry, I could not generate a response.";
     const responseTime = ((Date.now() - responseStart) / 1000).toFixed(1);
 addBubble("ai", safe(marked.parse(reply)), responseTime);
     if (document.hidden) {
@@ -700,23 +711,22 @@ function formatChatTime(ts) {
   if (isYesterday) return `Yesterday ${time}`;
   return date.toLocaleDateString([], { day: "numeric", month: "short" }) + " " + time;
 }
-const networkPill = document.getElementById("network-pill");
-const networkText = document.getElementById("network-text");
+networkPill.classList.remove("offline");
+networkText.textContent = "Online";
 
 function updateNetwork() {
   if (navigator.onLine) {
     networkPill.classList.remove("Disconnected");
     networkText.textContent = "Connected";
   } else {
-    networkPill.classList.add("Disconnected");
-    networkText.textContent = "No internet";
+    networkPill.classList.add("offline");
+networkText.textContent = "No internet";
   }
 }
 
 updateNetwork();
-window.addEventListener("Connected",  updateNetwork);
-window.addEventListener("Disconnected", updateNetwork);
-
+window.addEventListener("online",  updateNetwork);
+window.addEventListener("offline", updateNetwork);
 const micBtn = document.getElementById("mic-btn");
 let recognition = null;
 let isRecording = false;
