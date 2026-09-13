@@ -775,6 +775,7 @@ function renderIntro() {
 }
 
 function addBubble(role, html, responseTime="") {
+  messagesEl.querySelector(".intro-wrap")?.remove();
   const wrap=document.createElement("div");
   if(role==="user"){ wrap.className="msg-wrap user"; wrap.innerHTML=`<div class="bubble-user">${html}</div>`; }
   else { wrap.className="msg-wrap ai"; wrap.innerHTML=`<div class="ai-header"><div class="ai-badge">Simple</div><div class="ai-line"></div></div><div class="bubble-ai">${html}</div>${responseTime ? `<div class="response-timer">⏱ ${responseTime}s</div>` : ""}`; }
