@@ -76,6 +76,26 @@ const historyList=$("history-list");
 const chatTitleEl=$("chat-title");
 const toastStack    = $("toast-stack");
 const toastTemplate = $("toast-template");
+const confirmTemplate = $("confirm-template");
+
+function confirmToast(title, message) {
+  return new Promise(resolve => {
+    const node = confirmTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector(".toast-title").textContent = title;
+    node.querySelector(".toast-desc").textContent = message || "";
+    toastStack.appendChild(node);
+    requestAnimationFrame(() => node.classList.add("show"));
+
+    function close(result) {
+      node.classList.remove("show");
+      node.classList.add("hide");
+      node.addEventListener("transitionend", () => node.remove(), { once: true });
+      resolve(result);
+    }
+    node.querySelector(".toast-btn-cancel").addEventListener("click", () => close(false));
+    node.querySelector(".toast-btn-ok").addEventListener("click", () => close(true));
+  });
+}
 const newChatBtn= $("new-chat");
 const clearAllBtn=$("clear-all");
 const exportBtn = $("export-btn");
@@ -161,7 +181,7 @@ forgotLink.addEventListener("click", async () => {
 });
 
 signoutBtn.addEventListener("click", async () => {
-  if (!confirm("Sign out?")) return;
+  if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
   await signOut(auth);
   chats = {}; activeId = null;
   messagesEl.innerHTML = ""; historyList.innerHTML = "";
@@ -239,7 +259,7 @@ function bindAll() {
   retryBtn.addEventListener("click", regenerate);
   newChatBtn.addEventListener("click", () => { createChat(); closeSidebar(); });
   clearAllBtn.addEventListener("click", async () => {
-    if (!confirm("Delete all chat history?")) return;
+    if (!(await confirmToast("Delete all chat history?", "This can't be undone."))) return;
     const ids = Object.keys(chats);
     for (const id of ids) await deleteChat(id);
     createChat(); closeSidebar();

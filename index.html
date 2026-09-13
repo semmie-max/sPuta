@@ -201,6 +201,20 @@
     <div class="toast-timer"><div class="toast-timer-bar"></div></div>
   </div>
 </template>
+
+<template id="confirm-template">
+  <div class="toast-card toast-confirm">
+    <div class="toast-dot"></div>
+    <div class="toast-body">
+      <div class="toast-title"></div>
+      <div class="toast-desc"></div>
+      <div class="toast-actions">
+        <button class="toast-btn toast-btn-cancel" type="button">Cancel</button>
+        <button class="toast-btn toast-btn-ok" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+</template>
 <script type="module" src="script.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
