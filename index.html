@@ -26,7 +26,7 @@
   <div class="splash-dots">
     <div class="splash-dot"></div><div class="splash-dot"></div><div class="splash-dot"></div>
   </div>
-</div>
+</div> 
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo"><span>sPutta</span></div>
@@ -121,66 +121,58 @@
   <div class="messages" id="messages"></div>
 
   <div class="input-bar">
-    <div class="pending-strip" id="pending-strip">
-      <div class="pending-icon">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        </svg>
+    <div class="pi-frame" id="pi-frame">
+      <div class="pi-chips" id="pi-chips" style="display:none"></div>
+      <div class="pi-editor-wrap">
+        <div class="pi-field" id="msg-field" contenteditable="true" data-placeholder="Ask anything, or type / for a skill, or attach a file..." data-empty></div>
+        <div class="pi-enhancing-text" id="enhancing-text" style="display:none"></div>
+        <div class="pi-menu" id="slash-menu" style="display:none">
+          <div class="pi-menu-label">Skills</div>
+          <button class="pi-menu-item" data-skill="simple">Explain Simply</button>
+          <button class="pi-menu-item" data-skill="summary">Short Summary</button>
+          <button class="pi-menu-item" data-skill="keypoints">Key Points Only</button>
+          <button class="pi-menu-item" data-skill="questions">Answer My Questions</button>
+          <div class="pi-menu-empty" id="slash-empty" style="display:none">No matching skill</div>
+        </div>
       </div>
-      <div class="pending-info">
-        <div class="pending-name" id="pending-name">file.pdf</div>
-        <div class="pending-meta" id="pending-meta">PDF ready</div>
-      </div>
-      <button class="pending-remove" id="pending-remove">&#x2715;</button>
-    </div>
-    <div class="input-inner">
-      <div class="textarea-box">
-        <textarea id="msg-input" rows="1" placeholder="Ask anything, or attach a file or insert image..."></textarea>
-        <div class="box-actions">
-          <button class="box-btn" id="upload-btn" title="Attach PDF">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
+      <div class="pi-row">
+        <div class="pi-plus-wrap">
+          <button class="pi-icon-btn" id="plus-btn" title="Add">
+            <span class="pi-plus-icon">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </span>
           </button>
+          <div class="pi-menu" id="plus-menu" style="display:none">
+            <button class="pi-menu-item" id="menu-attach">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Attach file
+            </button>
+            <div class="pi-menu-divider"></div>
+            <div class="pi-menu-label">Skills</div>
+            <button class="pi-menu-item" data-skill="simple">Explain Simply</button>
+            <button class="pi-menu-item" data-skill="summary">Short Summary</button>
+            <button class="pi-menu-item" data-skill="keypoints">Key Points Only</button>
+            <button class="pi-menu-item" data-skill="questions">Answer My Questions</button>
+          </div>
+        </div>
+        <div class="pi-right">
+          <button class="pi-pill-btn" id="enhance-btn" title="Rewrite this more clearly">Enhance</button>
           <input type="file" id="file-input" accept="*/*" style="display:none"/>
           <button class="mic-btn" id="mic-btn" title="Voice input">
-  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-    <line x1="12" y1="19" x2="12" y2="23"/>
-    <line x1="8" y1="23" x2="16" y2="23"/>
-  </svg>
-</button>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <button class="stop-pill" id="stop-btn">Pause</button>
+          <button class="retry-pill" id="retry-btn">Re-run</button>
           <button class="send-btn" id="send-btn">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
           </button>
-        </div>
-      </div>
-      <div class="input-toolbar">
-        <div class="toolbar-left">
-          <button class="tool-btn" data-prompt="Explain in simple words...">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span class="tool-label">Explain simply</span>
-          </button>
-          <div class="tb-div"></div>
-          <button class="tool-btn" data-prompt="Give me a short summary of this.">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span class="tool-label">Summarise</span>
-          </button>
-          <div class="tb-div"></div>
-          <button class="tool-btn" data-prompt="Give me the highlights or key points">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <span class="tool-label">Key points</span>
-          </button>
-        </div>
-        <div class="toolbar-right">
-          <button class="stop-pill" id="stop-btn">Pause</button>
-          <button class="retry-pill" id="retry-btn">Re-run</button>
-          <span class="hint-text">Send with Enter</span>
         </div>
       </div>
     </div>

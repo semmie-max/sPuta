@@ -50,16 +50,28 @@ const userAvatar= $("user-avatar");
 const userEmailT= $("user-email-text");
 const signoutBtn= $("signout-btn");
 const messagesEl= $("messages");
-const msgInput  = $("msg-input");
+const msgField  = $("msg-field");
 const sendBtn   = $("send-btn");
 const stopBtn   = $("stop-btn");
 const retryBtn  = $("retry-btn");
-const uploadBtn = $("upload-btn");
 const fileInput = $("file-input");
-const pendingStrip=$("pending-strip");
-const pendingName=$("pending-name");
-const pendingMeta=$("pending-meta");
-const pendingRmv=$("pending-remove");
+const piFrame   = $("pi-frame");
+const piChips   = $("pi-chips");
+const plusBtn   = $("plus-btn");
+const plusMenu  = $("plus-menu");
+const slashMenu = $("slash-menu");
+const slashEmpty= $("slash-empty");
+const enhanceBtn= $("enhance-btn");
+const enhancingText = $("enhancing-text");
+
+const SKILLS = {
+  simple:    { label: "Explain Simply",      instruction: "Explain this in simple, everyday words a curious kid could follow." },
+  summary:   { label: "Short Summary",       instruction: "Give me a short summary." },
+  keypoints: { label: "Key Points Only",     instruction: "Give me just the key points, as a short list." },
+  questions: { label: "Answer My Questions", instruction: "I have specific questions about this — wait for me to ask them, then answer thoroughly." }
+};
+let pendingLabel = null;
+let lastEnhanceOriginal = "";
 const historyList=$("history-list");
 const chatTitleEl=$("chat-title");
 const toastEl   = $("toast");
@@ -222,11 +234,7 @@ bindAll();
 
 function bindAll() {
   sendBtn.addEventListener("click", handleSend);
-  msgInput.addEventListener("input", autosize);
-  msgInput.addEventListener("keydown", e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend();} });
-  uploadBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", e => { if(e.target.files[0]) handleFile(e.target.files[0]); fileInput.value=""; });
-  pendingRmv.addEventListener("click", clearFile);
   stopBtn.addEventListener("click", () => { isStreaming=false; stopBtn.style.display="none"; retryBtn.style.display="inline-block"; });
   retryBtn.addEventListener("click", regenerate);
   newChatBtn.addEventListener("click", () => { createChat(); closeSidebar(); });
@@ -240,14 +248,152 @@ function bindAll() {
   themeBtn.addEventListener("click", toggleTheme);
   menuBtn.addEventListener("click", () => { sidebar.classList.toggle("open"); overlay.classList.toggle("show"); });
   overlay.addEventListener("click", closeSidebar);
-  document.querySelectorAll(".tool-btn").forEach(btn => {
-    btn.addEventListener("click", () => { msgInput.value=btn.dataset.prompt||""; msgInput.focus(); autosize(); });
-  });
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => {
     e.preventDefault();
     const f=e.dataTransfer?.files?.[0];
     if(f) handleFile(f);
+  });
+  bindComposer();
+}
+
+function updateFieldEmptyState(){
+  const isEmpty = msgField.textContent.trim()==="" && !msgField.querySelector(".pi-skill-pill");
+  if(isEmpty) msgField.setAttribute("data-empty",""); else msgField.removeAttribute("data-empty");
+}
+function placeCaretAtEnd(el){
+  const range=document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel=window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+function getComposedMessage(){
+  let out="";
+  msgField.childNodes.forEach(node=>{
+    if(node.nodeType===Node.ELEMENT_NODE && node.classList?.contains("pi-skill-pill")){
+      const skill = SKILLS[node.dataset.skill];
+      if(skill) out += `[${skill.label}: ${skill.instruction}] `;
+    } else {
+      out += node.textContent;
+    }
+  });
+  return out.trim();
+}
+function insertSkillPill(id){
+  const skill = SKILLS[id];
+  if(!skill) return;
+  const pill = document.createElement("span");
+  pill.className = "pi-skill-pill";
+  pill.contentEditable = "false";
+  pill.dataset.skill = id;
+  pill.innerHTML = `<span>${esc(skill.label)}</span><button type="button" class="pi-skill-pill-x">&times;</button>`;
+  msgField.appendChild(pill);
+  msgField.appendChild(document.createTextNode(" "));
+}
+function stripTrailingSlashText(){
+  let node = msgField.lastChild;
+  while(node && node.nodeType!==Node.TEXT_NODE) node = node.previousSibling;
+  if(!node) return;
+  node.textContent = node.textContent.replace(/\/\w*$/,"");
+  if(node.textContent==="") node.remove();
+}
+function selectSkill(id){
+  stripTrailingSlashText();
+  insertSkillPill(id);
+  closeSlashMenu();
+  closePlusMenu();
+  msgField.focus();
+  placeCaretAtEnd(msgField);
+  updateFieldEmptyState();
+}
+function openSlashMenu(){ slashMenu.style.display="block"; }
+function closeSlashMenu(){ slashMenu.style.display="none"; }
+function closePlusMenu(){ plusMenu.style.display="none"; plusBtn.removeAttribute("data-open"); }
+function filterSlashMenu(query){
+  let anyVisible=false;
+  slashMenu.querySelectorAll("[data-skill]").forEach(btn=>{
+    const match = btn.textContent.toLowerCase().includes(query.toLowerCase());
+    btn.style.display = match ? "flex" : "none";
+    if(match) anyVisible=true;
+  });
+  slashEmpty.style.display = anyVisible ? "none" : "block";
+}
+async function handleEnhance(){
+  const original = getComposedMessage();
+  if(!original || enhanceBtn.disabled) return;
+  const originalHTML = msgField.innerHTML;
+  enhanceBtn.disabled = true;
+  piFrame.setAttribute("data-enhancing","");
+  msgField.style.display="none";
+  enhancingText.style.display="block";
+  enhancingText.textContent = original;
+  try {
+    const formData = new FormData();
+    formData.append("message", `Rewrite the following so it is clearer and better phrased. Keep the same intent and language. Reply with ONLY the rewritten text:\n\n${original}`);
+    formData.append("history", "[]");
+    const res = await fetch(API_URL, { method:"POST", mode:"cors", body: formData });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+    const rewritten = (data?.reply || "").trim();
+    if(rewritten){
+      msgField.textContent = rewritten;
+      lastEnhanceOriginal = originalHTML;
+      enhanceBtn.textContent = "Revert";
+      enhanceBtn.dataset.mode = "revert";
+    }
+  } catch(err){
+    toast("Could not enhance: " + err.message);
+  } finally {
+    piFrame.removeAttribute("data-enhancing");
+    msgField.style.display="block";
+    enhancingText.style.display="none";
+    enhanceBtn.disabled = false;
+    updateFieldEmptyState();
+    placeCaretAtEnd(msgField);
+  }
+}
+function bindComposer(){
+  msgField.addEventListener("input", ()=>{
+    updateFieldEmptyState();
+    const text = msgField.textContent;
+    const match = text.match(/\/(\w*)$/);
+    if(match){ filterSlashMenu(match[1]); openSlashMenu(); }
+    else { closeSlashMenu(); }
+  });
+  msgField.addEventListener("keydown", e=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); closeSlashMenu(); handleSend(); }
+    else if(e.key==="Escape"){ closeSlashMenu(); }
+  });
+  msgField.addEventListener("click", e=>{
+    if(e.target.closest(".pi-skill-pill-x")){ e.target.closest(".pi-skill-pill").remove(); updateFieldEmptyState(); }
+  });
+  slashMenu.querySelectorAll("[data-skill]").forEach(btn=>{
+    btn.addEventListener("click", ()=> selectSkill(btn.dataset.skill));
+  });
+  plusBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const open = plusMenu.style.display==="block";
+    plusMenu.style.display = open ? "none" : "block";
+    plusBtn.toggleAttribute("data-open", !open);
+  });
+  plusMenu.addEventListener("click", e=> e.stopPropagation());
+  $("menu-attach").addEventListener("click", ()=>{ fileInput.click(); closePlusMenu(); });
+  plusMenu.querySelectorAll("[data-skill]").forEach(btn=>{
+    btn.addEventListener("click", ()=> selectSkill(btn.dataset.skill));
+  });
+  document.addEventListener("click", ()=>{ closePlusMenu(); closeSlashMenu(); });
+  enhanceBtn.addEventListener("click", ()=>{
+    if(enhanceBtn.dataset.mode==="revert"){
+      msgField.innerHTML = lastEnhanceOriginal || "";
+      enhanceBtn.textContent = "Enhance";
+      enhanceBtn.dataset.mode = "";
+      updateFieldEmptyState();
+      placeCaretAtEnd(msgField);
+    } else {
+      handleEnhance();
+    }
   });
 }
 
@@ -273,11 +419,20 @@ function handleFile(file) {
   else if (isIMG) label = "Image";
 
   pendingFile = file;
-  pendingName.textContent = file.name;
-  pendingMeta.textContent = `${(file.size / 1024).toFixed(0)} KB · ${label}`;
-  pendingStrip.classList.add("show");
+  pendingLabel = label;
+  renderChips();
 }
-function clearFile() { pendingFile=null; pendingStrip.classList.remove("show"); }
+function clearFile() { pendingFile=null; pendingLabel=null; renderChips(); }
+function renderChips(){
+  piChips.innerHTML = "";
+  if(!pendingFile){ piChips.style.display="none"; return; }
+  piChips.style.display="flex";
+  const chip=document.createElement("div");
+  chip.className="pi-chip";
+  chip.innerHTML = `<span>${esc(pendingFile.name)}</span> <span style="opacity:.6">· ${(pendingFile.size/1024).toFixed(0)} KB · ${esc(pendingLabel)}</span> <button type="button" class="pi-chip-remove">&times;</button>`;
+  chip.querySelector(".pi-chip-remove").addEventListener("click", clearFile);
+  piChips.appendChild(chip);
+}
 
 async function extractText(file) {
   const name = file.name.toLowerCase();
@@ -366,9 +521,9 @@ async function extractImage(file) {
 }
 async function handleSend() {
   if(isStreaming) return;
-  const text=msgInput.value.trim();
+  const text=getComposedMessage();
   if(!text&&!pendingFile) return;
-  msgInput.value=""; autosize();
+  msgField.innerHTML=""; updateFieldEmptyState();
   if(!chats[activeId]) createChat();
 
   if(pendingFile){
@@ -596,7 +751,7 @@ function renderIntro() {
     if(f) handleFile(f);
   });
   wrap.querySelectorAll(".chip").forEach(c=>{
-    c.addEventListener("click",()=>{msgInput.value=c.textContent;msgInput.focus();autosize();});
+    c.addEventListener("click",()=>{msgField.textContent=c.textContent;updateFieldEmptyState();msgField.focus();placeCaretAtEnd(msgField);});
   });
 }
 
@@ -616,7 +771,6 @@ function showTyping() {
   messagesEl.scrollTop=messagesEl.scrollHeight;
 }
 function removeTyping() { $("typing-el")?.remove(); }
-function autosize() { msgInput.style.height="auto"; msgInput.style.height=Math.min(msgInput.scrollHeight,140)+"px"; }
 function safe(html) { return window.DOMPurify?DOMPurify.sanitize(html):html.replace(/<script[\s\S]*?<\/script>/gi,""); }
 function esc(s) { const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 function toast(msg, ok=false) {
@@ -741,28 +895,29 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   recognition.onstart = () => {
     isRecording = true;
     micBtn.classList.add("recording");
-    msgInput.placeholder = "Listening...";
+    msgField.dataset.placeholder = "Listening...";
   };
 
   recognition.onresult = (e) => {
     const transcript = Array.from(e.results)
       .map(r => r[0].transcript)
       .join("");
-    msgInput.value = transcript;
-    autosize();
+    msgField.textContent = transcript;
+    updateFieldEmptyState();
+    placeCaretAtEnd(msgField);
   };
 
   recognition.onend = () => {
     isRecording = false;
     micBtn.classList.remove("recording");
-    msgInput.placeholder = "Ask anything, or attach a file...";
-    if (msgInput.value.trim()) handleSend();
+    msgField.dataset.placeholder = "Ask anything, or type / for a skill, or attach a file...";
+    if (msgField.textContent.trim()) handleSend();
   };
 
   recognition.onerror = (e) => {
     isRecording = false;
     micBtn.classList.remove("recording");
-    msgInput.placeholder = "Ask anything, or attach a file...";
+    msgField.dataset.placeholder = "Ask anything, or type / for a skill, or attach a file...";
     if (e.error === "not-allowed") {
       toast("Microphone permission denied. Please allow it in your browser settings.");
     }
