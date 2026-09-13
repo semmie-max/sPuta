@@ -528,23 +528,6 @@ async function handleSend() {
 
   if(pendingFile){
     const fname=pendingFile.name;
-    addBubble("user",`<strong>Uploaded:</strong> ${esc(fname)}`);
-    let fileText;
-    try { fileText=await extractText(pendingFile); }
-    catch(err){ toast(err.message); clearFile(); return; }
-    chats[activeId].title=fname.slice(0,32);
-    chatTitleEl.textContent=chats[activeId].title;
-    renderSidebar();
-    chats[activeId].msgs.push({
-      role:"user",
-      content:`The user has uploaded a file called "${fname}". Here is the extracted content:\n\n${fileText}\n\nDo NOT explain it yet. Ask the user what they would like from this document. Give them clear friendly options: a full simple explanation, a short summary, just the key points, or specific questions answered. Be warm and concise.`,
-      _hidden:true
-    });
-    clearFile(); scheduleSave(activeId);
-    await getResponse();
-    return;
-  }  if(pendingFile){
-    const fname=pendingFile.name;
     const isImage = pendingFile.type.startsWith("image/");
     chats[activeId].title=fname.slice(0,32);
     chatTitleEl.textContent=chats[activeId].title;
@@ -621,12 +604,11 @@ async function getResponse() {
       content: m.content
     }));
   try {
-    const lastMsg = chats[activeId].msgs.filter(m => !m._hidden).at(-1);
+    const lastMsg = chats[activeId].msgs.at(-1);
 const formData = new FormData();
 formData.append("message", lastMsg.content);
 formData.append("history", JSON.stringify(
   chats[activeId].msgs
-    .filter(m => !m._hidden)
     .slice(0, -1)
     .map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }))
 ));
