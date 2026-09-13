@@ -108,6 +108,7 @@ let currentUser = null;
 let chats       = {};   
 let activeId    = null;
 let pendingFile = null;
+let pendingImageContext = null;
 let isStreaming = false;
 let lightMode   = false;
 let saveTimer   = null;
@@ -583,6 +584,26 @@ async function handleSend() {
     return;
   }
 
+  if(pendingImageContext && pendingImageContext.chatId===activeId){
+    const imgFile = pendingImageContext.file;
+    pendingImageContext = null;
+    isStreaming=true;
+    sendBtn.disabled=true; stopBtn.style.display="inline-block"; retryBtn.style.display="none";
+    addBubble("user", esc(text));
+    await sendImageDirect(imgFile, text, true);
+    return;
+  }
+
+  if(pendingImageContext && pendingImageContext.chatId===activeId){
+    const imgFile = pendingImageContext.file;
+    pendingImageContext = null;
+    isStreaming=true;
+    sendBtn.disabled=true; stopBtn.style.display="inline-block"; retryBtn.style.display="none";
+    addBubble("user", esc(text));
+    await sendImageDirect(imgFile, text, true);
+    return;
+  }
+
   addBubble("user", esc(text));
   chats[activeId].msgs.push({role:"user", content:text});
   const userVisible=chats[activeId].msgs.filter(m=>m.role==="user"&&!m._hidden).length;
@@ -595,12 +616,13 @@ async function handleSend() {
   await getResponse();
 }
 
-async function sendImageDirect(file) {
-  addBubble("user", `<strong>Uploaded:</strong> ${esc(file.name)}`);
+async function sendImageDirect(file, question, skipUploadBubble=false) {
+  if(!skipUploadBubble) addBubble("user", `<strong>Uploaded:</strong> ${esc(file.name)}`);
   showTyping();
   const API_BASE = API_URL.replace(/\/chat$/, "");
   const formData = new FormData();
   formData.append("file", file);
+  if(question) formData.append("question", question);
   try {
     const res = await fetch(`${API_BASE}/read-image`, { method: "POST", mode: "cors", body: formData });
     const data = await res.json();
@@ -608,9 +630,10 @@ async function sendImageDirect(file) {
     finalizeThinking();
     const reply = data?.reply || "Sorry, I could not read this image.";
     addBubble("ai", safe(marked.parse(reply)));
-    chats[activeId].msgs.push({role:"user", content:`[Uploaded image: ${file.name}]`, _hidden:true});
+    chats[activeId].msgs.push({role:"user", content: question ? question : `[Uploaded image: ${file.name}]`, _hidden:true});
     chats[activeId].msgs.push({role:"assistant", content:reply});
     scheduleSave(activeId);
+    pendingImageContext = { file, chatId: activeId };
   } catch (err) {
     removeTyping();
     addBubble("ai", `Something went wrong reading the image: ${esc(err.message)}`);
@@ -676,12 +699,14 @@ function createChat() {
   const id="c"+Date.now();
   chats[id]={title:"New Chat", msgs:[], ts:Date.now()};
   activeId=id; chatTitleEl.textContent="New Chat";
+  pendingImageContext = null;
   renderIntro(); renderSidebar(); scheduleSave(id);
 }
 
 function loadChat(id) {
   if(!chats[id]) return;
   activeId=id; chatTitleEl.textContent=chats[id].title;
+  pendingImageContext = null;
   messagesEl.innerHTML="";
   chats[id].msgs.forEach(m=>{
     if(m._hidden) return;
