@@ -45,10 +45,6 @@ const signupBtn = $("signup-btn");
 const loginErr  = $("login-error");
 const signupErr = $("signup-error");
 const forgotLink= $("forgot-link");
-const userPill  = $("user-pill");
-const userAvatar= $("user-avatar");
-const userEmailT= $("user-email-text");
-const signoutBtn= $("signout-btn");
 const messagesEl= $("messages");
 const msgField  = $("msg-field");
 const sendBtn   = $("send-btn");
@@ -98,8 +94,6 @@ function confirmToast(title, message) {
 }
 const newChatBtn= $("new-chat");
 const clearAllBtn=$("clear-all");
-const exportBtn = $("export-btn");
-const themeBtn  = $("theme-btn");
 const menuBtn   = $("menu-btn");
 const sidebar   = $("sidebar");
 const overlay   = $("overlay");
@@ -137,6 +131,11 @@ document.addEventListener("click", () => {
   accountBtn.removeAttribute("data-open");
 });
 
+menuTheme.addEventListener("click", () => {
+  accountMenu.classList.remove("show");
+  accountBtn.removeAttribute("data-open");
+  toggleTheme();
+});
 menuSettings.addEventListener("click", () => {
   accountMenu.classList.remove("show");
   accountBtn.removeAttribute("data-open");
@@ -232,29 +231,14 @@ forgotLink.addEventListener("click", async () => {
   }
 });
 
-signoutBtn.addEventListener("click", async () => {
-  if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
-  await signOut(auth);
-  chats = {}; activeId = null;
-  messagesEl.innerHTML = ""; historyList.innerHTML = "";
-  chatTitleEl.textContent = "New Chat";
-});
-
 function showUserUI(user) {
-  userAvatar.textContent = (user.email || "?")[0].toUpperCase();
-  userEmailT.textContent = user.email || "";
-  userPill.classList.add("show");
-  signoutBtn.classList.add("show");
   authEl.classList.remove("visible");
-
   accountAvatarLg.textContent = (user.email || "?")[0].toUpperCase();
   accountName.textContent = "My Account";
   accountSub.textContent = user.email || "";
   sidebarBottom.style.display = "block";
 }
 function hideUserUI() {
-  userPill.classList.remove("show");
-  signoutBtn.classList.remove("show");
   sidebarBottom.style.display = "none";
 }
 function setAuthLoading(btn, on) {
@@ -322,8 +306,6 @@ function bindAll() {
     for (const id of ids) await deleteChat(id);
     createChat(); closeSidebar();
   });
-  exportBtn.addEventListener("click", exportChat);
-  themeBtn.addEventListener("click", toggleTheme);
   menuBtn.addEventListener("click", () => {
     if (window.innerWidth <= 768) {
       sidebar.classList.toggle("open");
