@@ -296,6 +296,41 @@ async function saveLearningPrefs(prefs) {
   } catch (_) {}
 }
 
+const PREF_INSTRUCTIONS = {
+  shorter_chunks:       "Keep every paragraph to one or two short sentences.",
+  more_spacing:         "Leave a blank line between every paragraph so the reply feels open and easy on the eyes.",
+  highlight_words:      "Put the most important words and terms in bold using markdown.",
+  reduce_clutter:       "Keep it plain. No tables, no long lists, no decorative extras.",
+  larger_text:          "Use short lines and clear headings so the reply is easy to scan.",
+
+  step_by_step:         "Break the explanation into clear numbered steps.",
+  examples:             "Give at least one concrete everyday example.",
+  analogies:            "Use a simple analogy from daily life to explain the main idea.",
+  definitions:          "Right after any difficult word, explain what it means in brackets.",
+  repeat_concepts:      "End by repeating the main idea again in different simple words.",
+
+  no_color_only:        "Never rely on colour to carry meaning. Always say it in words.",
+  high_contrast:        "Keep formatting strong and plain. No faint or decorative styling.",
+  patterns_icons:       "Separate different ideas with clear markers like numbers, arrows or short labels.",
+  simplified_layout:    "Keep the layout very simple. Short blocks, no nested lists.",
+
+  voice_input:          "Write so the reply sounds natural when read out loud.",
+  keyboard_first:       "Keep replies compact and quick to scroll through.",
+  minimal_distractions: "Answer only what was asked. No side notes, no extra tips."
+};
+
+function buildPrefsInstruction() {
+  if (!learningPrefs) return "";
+  const lines = [];
+  Object.values(learningPrefs).forEach(list => {
+    (list || []).forEach(optId => {
+      if (PREF_INSTRUCTIONS[optId]) lines.push("- " + PREF_INSTRUCTIONS[optId]);
+    });
+  });
+  if (!lines.length) return "";
+  return "The user has told us how they learn best. Follow these rules in every reply:\n" + lines.join("\n");
+}
+
 /* ---- Settings: full-page, tabbed (accordion reused for learning prefs) ---- */
 function renderChecklistTasks(container, prefs, opts = {}) {
   container.innerHTML = "";
@@ -873,6 +908,7 @@ async function sendImageDirect(file, question, skipUploadBubble=false) {
   const formData = new FormData();
   formData.append("file", file);
   if(question) formData.append("question", question);
+  formData.append("prefs", buildPrefsInstruction());
   try {
     const res = await fetch(`${API_BASE}/read-image`, { method: "POST", mode: "cors", body: formData });
     const data = await res.json();
@@ -912,6 +948,7 @@ formData.append("history", JSON.stringify(
     .slice(0, -1)
     .map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }))
 ));
+formData.append("prefs", buildPrefsInstruction());
 
 const res = await fetch(API_URL, {
   method: "POST",

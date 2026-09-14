@@ -47,13 +47,20 @@ def root():
     return {"status": "PDF sPutta API is running"}
 
 
+def build_system(prefs: str = "") -> str:
+    if prefs and prefs.strip():
+        return SYSTEM + "\n\n" + prefs.strip()
+    return SYSTEM
+
+
 @app.post("/chat")
 async def chat(
     message: str = Form(...),
     history: str = Form(default="[]"),
+    prefs: str = Form(default=""),
 ):
     chat_history = json.loads(history)
-    messages = [{"role": "system", "content": SYSTEM}]
+    messages = [{"role": "system", "content": build_system(prefs)}]
     messages += chat_history
     messages.append({"role": "user", "content": message})
 
@@ -98,7 +105,8 @@ async def extract(file: UploadFile = File(...)):
 @app.post("/read-image")
 async def read_image(
     file: UploadFile = File(...),
-    question: str = Form(default="Read everything in this image including any text, equations, formulas or diagrams.")
+    question: str = Form(default="Read everything in this image including any text, equations, formulas or diagrams."),
+    prefs: str = Form(default="")
 ):
     try:
         contents = await file.read()
@@ -129,7 +137,7 @@ async def read_image(
                         },
                         {
                             "type": "text",
-                            "text": f"{SYSTEM}\n\n{question}"
+                            "text": f"{build_system(prefs)}\n\n{question}"
                         }
                     ]
                 }
@@ -147,7 +155,8 @@ async def read_image(
 @app.post("/read-pdf")
 async def read_pdf(
     file: UploadFile = File(...),
-    question: str = Form(default="What is in this document?")
+    question: str = Form(default="What is in this document?"),
+    prefs: str = Form(default="")
 ):
     try:
         contents = await file.read()
@@ -172,7 +181,7 @@ If this document contains mathematical or physics equations, formulas or express
 """
 
         messages = [
-            {"role": "system", "content": SYSTEM + math_hint},
+            {"role": "system", "content": build_system(prefs) + math_hint},
             {"role": "user", "content": f"Here is the document content:\n\n{text}\n\nQuestion: {question}"}
         ]
 
