@@ -448,11 +448,11 @@ textarea::placeholder { color: var(--faint); }
 * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
 
 @media (max-width: 768px) {
-  .sidebar { position: fixed; top:0; left:0; bottom:0; transform: translateX(-100%); }
+  html, body { height: 100dvh; }
+  .sidebar { position: fixed; top:0; left:0; bottom:0; width: min(var(--sidebar-w), 82vw); transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
   .overlay.show { display: block; }
   .menu-btn { display: flex; }
-  .user-pill { max-width: 110px; }
 }
 @media (max-width: 520px) {
   .tool-label { display: none; } .tb-div { display: none; } .hint-text { display: none; }
@@ -460,6 +460,11 @@ textarea::placeholder { color: var(--faint); }
   .msg-wrap { padding: 0 14px; } .intro-wrap { padding: 0 16px; } .bubble-user { max-width: 85%; }
   .topbar { padding: 0 14px; } .chips-row { gap: 6px; } .chip { font-size: 12px; padding: 7px 13px; }
   .drop-zone { padding: 28px 16px; } .auth-card { padding: 32px 24px 28px; }
+  .pi-frame { padding: 10px 10px 8px; border-radius: 18px; }
+  .pi-right { gap: 4px; }
+  .pi-pill-btn { padding: 0 10px; font-size: 11.5px; }
+  .account-menu { left: 8px; right: 8px; }
+  .ai-badge { font-size: 9px; padding: 2px 7px; }
 }
 .search-box {
   display: none; padding: 10px 12px; border-bottom: 1px solid var(--border);
