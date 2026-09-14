@@ -228,21 +228,16 @@ function showUserUI(user) {
   userPill.classList.add("show");
   signoutBtn.classList.add("show");
   authEl.classList.remove("visible");
+
+  accountAvatarLg.textContent = (user.email || "?")[0].toUpperCase();
+  accountName.textContent = "My Account";
+  accountSub.textContent = user.email || "";
+  sidebarBottom.style.display = "block";
 }
 function hideUserUI() {
   userPill.classList.remove("show");
   signoutBtn.classList.remove("show");
-}
-function showUserUI(user) {
-  userAvatar.textContent = (user.email || "?")[0].toUpperCase();
-  userEmailT.textContent = user.email || "";
-  userPill.classList.add("show");
-  signoutBtn.classList.add("show");
-  authEl.classList.remove("visible");
-}
-function hideUserUI() {
-  userPill.classList.remove("show");
-  signoutBtn.classList.remove("show");
+  sidebarBottom.style.display = "none";
 }
 function setAuthLoading(btn, on) {
   btn.disabled = on; btn.classList.toggle("loading", on);
