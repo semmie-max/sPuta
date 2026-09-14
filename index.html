@@ -64,7 +64,40 @@
     <div class="auth-note">Conversations are stored in your account and accessible on any device.</div>
   </div>
 </div>
+<div id="onboarding-screen">
+  <div class="checklist-card" id="onboarding-card">
+    <div class="checklist-head">
+      <div class="checklist-title">Personalize sPutta</div>
+      <div class="checklist-progress-label" id="onboarding-progress-label">0 of 4 done</div>
+    </div>
+    <div class="checklist-bar-track"><div class="checklist-bar-fill" id="onboarding-bar-fill"></div></div>
+    <div class="checklist-sub">Tell us how you learn best. This shapes how sPutta explains things to you — you can change it anytime in Settings.</div>
+    <div class="checklist-tasks" id="onboarding-tasks"></div>
+    <div class="checklist-celebrate" id="onboarding-celebrate">
+      <span>You're all set! sPutta will explain things your way.</span>
+      <button class="checklist-finish-btn" id="onboarding-finish-btn">Start exploring</button>
+    </div>
+    <button class="checklist-skip-btn" id="onboarding-skip-btn">Skip for now</button>
+  </div>
+</div>
 <div class="overlay" id="overlay"></div>
+<div id="settings-screen">
+  <div class="settings-card">
+    <div class="settings-head">
+      <div class="settings-title">Settings</div>
+      <button class="settings-close" id="settings-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Appearance</div>
+      <button class="pi-pill-btn" id="settings-theme-btn">Toggle Theme</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">How you learn best</div>
+      <div class="settings-sub">Choose whatever makes information easier for you. Changes save automatically.</div>
+      <div class="checklist-tasks" id="settings-tasks"></div>
+    </div>
+  </div>
+</div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-top">
     <div class="logo"><span>sPutta</span></div>
@@ -103,6 +136,10 @@
     <button class="account-menu-item" id="menu-theme">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       Toggle Theme
+    </button>
+        <button class="account-menu-item" id="menu-settings">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
     </button>
     <button class="account-menu-item" id="menu-export">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

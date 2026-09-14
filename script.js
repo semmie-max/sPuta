@@ -3,7 +3,7 @@ import { getAuth, createUserWithEmailAndPassword,
          signInWithEmailAndPassword, signOut,
          onAuthStateChanged, sendPasswordResetEmail }
                                                 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, doc, getDocs,
+import { getFirestore, collection, doc, getDocs, getDoc,
          setDoc, deleteDoc, query, orderBy }    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const firebaseConfig = {
   apiKey:            "AIzaSyConrGYhTeufziVf4sSkxCMOauEfNIxGiE",
@@ -110,8 +110,20 @@ const accountAvatarLg= $("account-avatar-lg");
 const accountName    = $("account-name");
 const accountSub     = $("account-sub");
 const menuTheme      = $("menu-theme");
+const menuSettings   = $("menu-settings");
 const menuExport     = $("menu-export");
 const menuSignout    = $("menu-signout");
+const onboardingScreen   = $("onboarding-screen");
+const onboardingTasks    = $("onboarding-tasks");
+const onboardingBarFill  = $("onboarding-bar-fill");
+const onboardingProgressLabel = $("onboarding-progress-label");
+const onboardingCelebrate = $("onboarding-celebrate");
+const onboardingFinishBtn = $("onboarding-finish-btn");
+const onboardingSkipBtn   = $("onboarding-skip-btn");
+const settingsScreen  = $("settings-screen");
+const settingsClose   = $("settings-close");
+const settingsThemeBtn= $("settings-theme-btn");
+const settingsTasks   = $("settings-tasks");
 
 accountBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -125,7 +137,11 @@ document.addEventListener("click", () => {
   accountBtn.removeAttribute("data-open");
 });
 
-menuTheme.addEventListener("click", () => { toggleTheme(); });
+menuSettings.addEventListener("click", () => {
+  accountMenu.classList.remove("show");
+  accountBtn.removeAttribute("data-open");
+  openSettings();
+});
 menuExport.addEventListener("click", () => { exportChat(); });
 menuSignout.addEventListener("click", async () => {
   accountMenu.classList.remove("show");
@@ -153,8 +169,10 @@ onAuthStateChanged(auth, async user => {
     showUserUI(user);
     requestNotificationPermission();
     await loadChatsFromFirestore();
+    await loadLearningPrefs();
     const ids = Object.keys(chats).sort((a,b) => chats[b].ts - chats[a].ts);
     if (ids.length) loadChat(ids[0]); else createChat();
+    if (!learningPrefs) showOnboarding();
   } else {
     currentUser = null;
     chats = {}; activeId = null;
