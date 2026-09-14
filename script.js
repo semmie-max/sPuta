@@ -160,6 +160,175 @@ let pendingImageContext = null;
 let isStreaming = false;
 let lightMode   = false;
 let saveTimer   = null;
+let learningPrefs = null;
+
+const LEARNING_CATEGORIES = {
+  reading: {
+    label: "Reading",
+    options: {
+      shorter_chunks:   "Shorter chunks",
+      more_spacing:     "More spacing",
+      highlight_words:  "Highlight important words",
+      reduce_clutter:   "Reduce visual clutter",
+      larger_text:      "Larger text"
+    }
+  },
+  understanding: {
+    label: "Understanding",
+    options: {
+      step_by_step:     "Step-by-step",
+      examples:         "Examples",
+      analogies:        "Analogies",
+      definitions:      "Definitions for difficult words",
+      repeat_concepts:  "Repeat important concepts"
+    }
+  },
+  visual: {
+    label: "Visual",
+    options: {
+      no_color_only:    "Don't rely on colour alone",
+      high_contrast:    "High contrast",
+      patterns_icons:   "Distinguish information with patterns/icons",
+      simplified_layout:"Simplified visual layout"
+    }
+  },
+  interaction: {
+    label: "Interaction",
+    options: {
+      voice_input:          "Voice input",
+      keyboard_first:       "Keyboard-first",
+      minimal_distractions: "Minimal distractions"
+    }
+  }
+};
+
+function emptyPrefs() {
+  const p = {};
+  Object.keys(LEARNING_CATEGORIES).forEach(k => p[k] = []);
+  return p;
+}
+
+function checkSvg() {
+  return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+}
+
+function countDone(prefs) {
+  return Object.keys(LEARNING_CATEGORIES).filter(k => (prefs[k] || []).length > 0).length;
+}
+
+function renderChecklistTasks(container, prefs, opts = {}) {
+  container.innerHTML = "";
+  Object.entries(LEARNING_CATEGORIES).forEach(([catId, cat]) => {
+    const done = (prefs[catId] || []).length > 0;
+    const task = document.createElement("div");
+    task.className = "checklist-task" + (done ? " done" : "");
+    task.dataset.cat = catId;
+
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "checklist-task-row";
+    row.innerHTML = `
+      <span class="checklist-marker">${done ? checkSvg() : ""}</span>
+      <span class="checklist-task-label">${esc(cat.label)}</span>
+      <span class="checklist-task-action">${done ? "" : "Set up"}</span>
+    `;
+
+    const panel = document.createElement("div");
+    panel.className = "checklist-task-panel";
+    const optionsHtml = Object.entries(cat.options).map(([optId, optLabel]) => `
+      <label class="checklist-option">
+        <input type="checkbox" value="${optId}" ${(prefs[catId] || []).includes(optId) ? "checked" : ""}>
+        <span>${esc(optLabel)}</span>
+      </label>
+    `).join("");
+    panel.innerHTML = `
+      <div class="checklist-options">${optionsHtml}</div>
+      <button type="button" class="checklist-panel-save">Save</button>
+    `;
+
+    row.addEventListener("click", () => {
+      const isOpen = task.classList.contains("open");
+      container.querySelectorAll(".checklist-task.open").forEach(t => t.classList.remove("open"));
+      task.classList.toggle("open", !isOpen);
+    });
+
+    panel.querySelector(".checklist-panel-save").addEventListener("click", () => {
+      const checked = Array.from(panel.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
+      prefs[catId] = checked;
+      task.classList.remove("open");
+      task.classList.toggle("done", checked.length > 0);
+      task.querySelector(".checklist-marker").innerHTML = checked.length > 0 ? checkSvg() : "";
+      task.querySelector(".checklist-task-action").textContent = checked.length > 0 ? "" : "Set up";
+      if (opts.onChange) opts.onChange(prefs);
+    });
+
+    task.appendChild(row);
+    task.appendChild(panel);
+    container.appendChild(task);
+  });
+}
+
+let onboardingPrefs = emptyPrefs();
+
+function updateOnboardingProgress() {
+  const total = Object.keys(LEARNING_CATEGORIES).length;
+  const done  = countDone(onboardingPrefs);
+  const pct   = Math.round((done / total) * 100);
+  onboardingBarFill.style.width = pct + "%";
+  if (done === total) {
+    onboardingProgressLabel.style.display = "none";
+    onboardingCelebrate.classList.add("show");
+  } else {
+    onboardingProgressLabel.style.display = "";
+    onboardingProgressLabel.textContent = `${done} of ${total} done`;
+    onboardingCelebrate.classList.remove("show");
+  }
+}
+
+function showOnboarding() {
+  onboardingPrefs = emptyPrefs();
+  renderChecklistTasks(onboardingTasks, onboardingPrefs, { onChange: updateOnboardingProgress });
+  updateOnboardingProgress();
+  onboardingScreen.classList.add("visible");
+}
+function hideOnboarding() {
+  onboardingScreen.classList.remove("visible");
+}
+onboardingFinishBtn.addEventListener("click", async () => {
+  await saveLearningPrefs(onboardingPrefs);
+  hideOnboarding();
+});
+onboardingSkipBtn.addEventListener("click", async () => {
+  await saveLearningPrefs(onboardingPrefs);
+  hideOnboarding();
+});
+
+async function loadLearningPrefs() {
+  try {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
+    learningPrefs = (snap.exists() && snap.data().learningPrefs) ? snap.data().learningPrefs : null;
+  } catch (_) { learningPrefs = null; }
+}
+async function saveLearningPrefs(prefs) {
+  learningPrefs = prefs;
+  try {
+    await setDoc(doc(db, "users", currentUser.uid), { learningPrefs: prefs }, { merge: true });
+  } catch (_) {}
+}
+
+function openSettings() {
+  const prefs = learningPrefs ? JSON.parse(JSON.stringify(learningPrefs)) : emptyPrefs();
+  renderChecklistTasks(settingsTasks, prefs, {
+    onChange: (updated) => { saveLearningPrefs(updated); }
+  });
+  settingsScreen.classList.add("visible");
+}
+function closeSettings() {
+  settingsScreen.classList.remove("visible");
+}
+settingsClose.addEventListener("click", closeSettings);
+settingsScreen.addEventListener("click", e => { if (e.target === settingsScreen) closeSettings(); });
+settingsThemeBtn.addEventListener("click", toggleTheme);
 
 onAuthStateChanged(auth, async user => {
   loadingEl.style.display = "none";
