@@ -816,3 +816,186 @@ textarea::placeholder { color: var(--faint); }
   .settings-nav-item { white-space: nowrap; }
   .settings-content { padding: 24px 18px; }
 }
+
+/* ===== Learning checklist (settings + onboarding) ===== */
+#settings-tasks,
+#onboard-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#settings-tasks > *,
+#onboard-options > * {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+#settings-tasks > * > :first-child,
+#onboard-options > * > :first-child {
+  flex: 1 0 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+#settings-tasks label,
+#onboard-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--ff-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+#settings-tasks label:hover,
+#onboard-options label:hover {
+  border-color: rgba(168,204,90,0.4);
+  color: var(--text);
+}
+#settings-tasks label:has(input:checked),
+#onboard-options label:has(input:checked) {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+
+#settings-tasks input[type="checkbox"],
+#onboard-options input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border2);
+  border-radius: 5px;
+  background: var(--surface2);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#settings-tasks input[type="checkbox"]::before,
+#onboard-options input[type="checkbox"]::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  transform: scale(0);
+  transition: transform 0.12s cubic-bezier(0.22,1,0.36,1);
+  box-shadow: inset 1em 1em var(--green);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+#settings-tasks input[type="checkbox"]:checked,
+#onboard-options input[type="checkbox"]:checked {
+  border-color: var(--green);
+  background: var(--green-dim);
+}
+#settings-tasks input[type="checkbox"]:checked::before,
+#onboard-options input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+#settings-tasks button,
+#onboard-options button {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 7px 16px;
+  font-family: var(--ff-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#settings-tasks button:hover,
+#onboard-options button:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+
+.checklist-bar-track {
+  height: 4px;
+  width: 100%;
+  background: var(--surface2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.checklist-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--green);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+.checklist-skip-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--ff-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+  text-decoration: underline;
+  transition: color 0.15s;
+}
+.checklist-skip-btn:hover { color: var(--text); }
+
+.checklist-finish-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  background: var(--green);
+  color: #0e0e0d;
+  font-family: var(--ff-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.12s;
+}
+.checklist-finish-btn:hover { filter: brightness(1.08); }
+.checklist-finish-btn:active { transform: scale(0.98); }
+
+.checklist-celebrate {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: var(--green-dim);
+  border: 1px solid rgba(168,204,90,0.22);
+  color: var(--green);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.checklist-celebrate.show { display: flex; }
+
+@media (max-width: 520px) {
+  #settings-tasks > *,
+  #onboard-options > * { padding: 14px; border-radius: 12px; }
+  #settings-tasks button,
+  #onboard-options button { margin-left: 0; width: 100%; }
+}
