@@ -103,6 +103,39 @@ const themeBtn  = $("theme-btn");
 const menuBtn   = $("menu-btn");
 const sidebar   = $("sidebar");
 const overlay   = $("overlay");
+const sidebarBottom = $("sidebar-bottom");
+const accountBtn     = $("account-btn");
+const accountMenu    = $("account-menu");
+const accountAvatarLg= $("account-avatar-lg");
+const accountName    = $("account-name");
+const accountSub     = $("account-sub");
+const menuTheme      = $("menu-theme");
+const menuExport     = $("menu-export");
+const menuSignout    = $("menu-signout");
+
+accountBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = accountMenu.classList.contains("show");
+  accountMenu.classList.toggle("show", !open);
+  accountBtn.toggleAttribute("data-open", !open);
+});
+accountMenu.addEventListener("click", e => e.stopPropagation());
+document.addEventListener("click", () => {
+  accountMenu.classList.remove("show");
+  accountBtn.removeAttribute("data-open");
+});
+
+menuTheme.addEventListener("click", () => { toggleTheme(); });
+menuExport.addEventListener("click", () => { exportChat(); });
+menuSignout.addEventListener("click", async () => {
+  accountMenu.classList.remove("show");
+  accountBtn.removeAttribute("data-open");
+  if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
+  await signOut(auth);
+  chats = {}; activeId = null;
+  messagesEl.innerHTML = ""; historyList.innerHTML = "";
+  chatTitleEl.textContent = "New Chat";
+});
 
 let currentUser = null;
 let chats       = {};   
@@ -189,6 +222,17 @@ signoutBtn.addEventListener("click", async () => {
   chatTitleEl.textContent = "New Chat";
 });
 
+function showUserUI(user) {
+  userAvatar.textContent = (user.email || "?")[0].toUpperCase();
+  userEmailT.textContent = user.email || "";
+  userPill.classList.add("show");
+  signoutBtn.classList.add("show");
+  authEl.classList.remove("visible");
+}
+function hideUserUI() {
+  userPill.classList.remove("show");
+  signoutBtn.classList.remove("show");
+}
 function showUserUI(user) {
   userAvatar.textContent = (user.email || "?")[0].toUpperCase();
   userEmailT.textContent = user.email || "";
