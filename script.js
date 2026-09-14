@@ -1089,22 +1089,7 @@ function formatChatTime(ts) {
   if (isYesterday) return `Yesterday ${time}`;
   return date.toLocaleDateString([], { day: "numeric", month: "short" }) + " " + time;
 }
-networkPill.classList.remove("offline");
-networkText.textContent = "Online";
 
-function updateNetwork() {
-  if (navigator.onLine) {
-    networkPill.classList.remove("Disconnected");
-    networkText.textContent = "Connected";
-  } else {
-    networkPill.classList.add("offline");
-networkText.textContent = "No internet";
-  }
-}
-
-updateNetwork();
-window.addEventListener("online",  updateNetwork);
-window.addEventListener("offline", updateNetwork);
 const micBtn = document.getElementById("mic-btn");
 let recognition = null;
 let isRecording = false;
