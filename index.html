@@ -65,36 +65,71 @@
   </div>
 </div>
 <div id="onboarding-screen">
-  <div class="checklist-card" id="onboarding-card">
-    <div class="checklist-head">
-      <div class="checklist-title">Personalize sPutta</div>
-      <div class="checklist-progress-label" id="onboarding-progress-label">0 of 4 done</div>
+  <div class="onboard-card" id="onboarding-card">
+    <div class="onboard-head">
+      <div class="onboard-step-label" id="onboard-step-label">Step 1 of 4</div>
+      <button class="checklist-skip-btn" id="onboarding-skip-btn">Skip for now</button>
     </div>
     <div class="checklist-bar-track"><div class="checklist-bar-fill" id="onboarding-bar-fill"></div></div>
-    <div class="checklist-sub">Tell us how you learn best. This shapes how sPutta explains things to you — you can change it anytime in Settings.</div>
-    <div class="checklist-tasks" id="onboarding-tasks"></div>
-    <div class="checklist-celebrate" id="onboarding-celebrate">
-      <span>You're all set! sPutta will explain things your way.</span>
-      <button class="checklist-finish-btn" id="onboarding-finish-btn">Start exploring</button>
+
+    <div id="onboard-step-view">
+      <div class="onboard-title" id="onboard-title">Reading</div>
+      <div class="onboard-sub" id="onboard-sub">Choose whatever helps — this step is optional, you can skip it.</div>
+      <div class="checklist-options" id="onboard-options"></div>
+      <div class="onboard-footer">
+        <button class="onboard-nav-btn ghost" id="onboard-back-btn">Back</button>
+        <button class="onboard-nav-btn" id="onboard-next-btn">Next</button>
+      </div>
     </div>
-    <button class="checklist-skip-btn" id="onboarding-skip-btn">Skip for now</button>
+
+    <div id="onboard-celebrate-view" style="display:none">
+      <div class="checklist-celebrate show">
+        <span>You're all set! sPutta will explain things your way.</span>
+      </div>
+      <button class="checklist-finish-btn" id="onboarding-finish-btn" style="margin-top:14px;width:100%;">Start exploring</button>
+    </div>
   </div>
 </div>
 <div class="overlay" id="overlay"></div>
 <div id="settings-screen">
-  <div class="settings-card">
-    <div class="settings-head">
-      <div class="settings-title">Settings</div>
-      <button class="settings-close" id="settings-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Appearance</div>
-      <button class="pi-pill-btn" id="settings-theme-btn">Toggle Theme</button>
-    </div>
-    <div class="settings-section">
-      <div class="settings-section-title">How you learn best</div>
-      <div class="settings-sub">Choose whatever makes information easier for you. Changes save automatically.</div>
-      <div class="checklist-tasks" id="settings-tasks"></div>
+  <div class="settings-shell">
+    <nav class="settings-nav">
+      <div class="settings-nav-head">
+        <button class="settings-back" id="settings-back" aria-label="Close settings">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <div class="settings-nav-title">Settings</div>
+      </div>
+      <button class="settings-nav-item active" data-panel="appearance">Appearance</button>
+      <button class="settings-nav-item" data-panel="learning">How You Learn Best</button>
+      <button class="settings-nav-item" data-panel="account">Account</button>
+    </nav>
+    <div class="settings-content">
+      <div class="settings-panel" data-panel="appearance">
+        <div class="settings-panel-title">Appearance</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Theme</div>
+            <div class="settings-row-desc">Switch between dark and light mode.</div>
+          </div>
+          <button class="pi-pill-btn" id="settings-theme-btn">Toggle Theme</button>
+        </div>
+      </div>
+      <div class="settings-panel" data-panel="learning" style="display:none">
+        <div class="settings-panel-title">How You Learn Best</div>
+        <div class="settings-panel-desc">Choose whatever makes information easier for you. Changes save automatically.</div>
+        <div class="checklist-tasks" id="settings-tasks"></div>
+      </div>
+      <div class="settings-panel" data-panel="account" style="display:none">
+        <div class="settings-panel-title">Account</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label" id="settings-account-email">—</div>
+            <div class="settings-row-desc">Signed in to sPutta</div>
+          </div>
+          <button class="checklist-skip-btn" id="settings-signout-btn" style="color:var(--red);text-decoration:none;border:1px solid var(--border2);border-radius:8px;padding:6px 14px;">Log Off</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

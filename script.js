@@ -107,17 +107,28 @@ const menuTheme      = $("menu-theme");
 const menuSettings   = $("menu-settings");
 const menuExport     = $("menu-export");
 const menuSignout    = $("menu-signout");
-const onboardingScreen   = $("onboarding-screen");
-const onboardingTasks    = $("onboarding-tasks");
-const onboardingBarFill  = $("onboarding-bar-fill");
-const onboardingProgressLabel = $("onboarding-progress-label");
-const onboardingCelebrate = $("onboarding-celebrate");
-const onboardingFinishBtn = $("onboarding-finish-btn");
-const onboardingSkipBtn   = $("onboarding-skip-btn");
-const settingsScreen  = $("settings-screen");
-const settingsClose   = $("settings-close");
-const settingsThemeBtn= $("settings-theme-btn");
-const settingsTasks   = $("settings-tasks");
+
+const onboardingScreen     = $("onboarding-screen");
+const onboardStepLabel     = $("onboard-step-label");
+const onboardingBarFill    = $("onboarding-bar-fill");
+const onboardStepView      = $("onboard-step-view");
+const onboardCelebrateView = $("onboard-celebrate-view");
+const onboardTitle         = $("onboard-title");
+const onboardSub           = $("onboard-sub");
+const onboardOptions       = $("onboard-options");
+const onboardBackBtn       = $("onboard-back-btn");
+const onboardNextBtn       = $("onboard-next-btn");
+const onboardingFinishBtn  = $("onboarding-finish-btn");
+const onboardingSkipBtn    = $("onboarding-skip-btn");
+
+const settingsScreen       = $("settings-screen");
+const settingsBack         = $("settings-back");
+const settingsNavItems     = document.querySelectorAll(".settings-nav-item");
+const settingsPanels       = document.querySelectorAll(".settings-panel");
+const settingsThemeBtn     = $("settings-theme-btn");
+const settingsTasks        = $("settings-tasks");
+const settingsAccountEmail = $("settings-account-email");
+const settingsSignoutBtn   = $("settings-signout-btn");
 
 accountBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -145,11 +156,7 @@ menuExport.addEventListener("click", () => { exportChat(); });
 menuSignout.addEventListener("click", async () => {
   accountMenu.classList.remove("show");
   accountBtn.removeAttribute("data-open");
-  if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
-  await signOut(auth);
-  chats = {}; activeId = null;
-  messagesEl.innerHTML = ""; historyList.innerHTML = "";
-  chatTitleEl.textContent = "New Chat";
+  await doSignOut();
 });
 
 let currentUser = null;
@@ -207,15 +214,89 @@ function emptyPrefs() {
   Object.keys(LEARNING_CATEGORIES).forEach(k => p[k] = []);
   return p;
 }
-
 function checkSvg() {
   return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 }
 
-function countDone(prefs) {
-  return Object.keys(LEARNING_CATEGORIES).filter(k => (prefs[k] || []).length > 0).length;
+/* ---- Onboarding: step-by-step wizard ---- */
+const ONBOARD_STEPS = Object.keys(LEARNING_CATEGORIES);
+let onboardStepIndex = 0;
+let onboardingPrefs  = emptyPrefs();
+
+function renderOnboardStep() {
+  const catId = ONBOARD_STEPS[onboardStepIndex];
+  const cat   = LEARNING_CATEGORIES[catId];
+  const total = ONBOARD_STEPS.length;
+
+  onboardStepLabel.textContent = `Step ${onboardStepIndex + 1} of ${total}`;
+  onboardingBarFill.style.width = `${Math.round((onboardStepIndex / total) * 100)}%`;
+  onboardTitle.textContent = cat.label;
+  onboardSub.textContent = "Choose whatever helps — this step is optional, you can skip it.";
+
+  onboardOptions.innerHTML = Object.entries(cat.options).map(([optId, optLabel]) => `
+    <label class="checklist-option">
+      <input type="checkbox" value="${optId}" ${(onboardingPrefs[catId] || []).includes(optId) ? "checked" : ""}>
+      <span>${esc(optLabel)}</span>
+    </label>
+  `).join("");
+
+  onboardBackBtn.disabled = onboardStepIndex === 0;
+  onboardNextBtn.textContent = onboardStepIndex === total - 1 ? "Finish" : "Next";
+}
+function saveCurrentOnboardStep() {
+  const catId = ONBOARD_STEPS[onboardStepIndex];
+  const checked = Array.from(onboardOptions.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
+  onboardingPrefs[catId] = checked;
+}
+onboardNextBtn.addEventListener("click", async () => {
+  saveCurrentOnboardStep();
+  if (onboardStepIndex < ONBOARD_STEPS.length - 1) {
+    onboardStepIndex++;
+    renderOnboardStep();
+  } else {
+    onboardingBarFill.style.width = "100%";
+    await saveLearningPrefs(onboardingPrefs);
+    onboardStepView.style.display = "none";
+    onboardCelebrateView.style.display = "block";
+  }
+});
+onboardBackBtn.addEventListener("click", () => {
+  if (onboardStepIndex === 0) return;
+  saveCurrentOnboardStep();
+  onboardStepIndex--;
+  renderOnboardStep();
+});
+function showOnboarding() {
+  onboardingPrefs  = emptyPrefs();
+  onboardStepIndex = 0;
+  onboardStepView.style.display = "block";
+  onboardCelebrateView.style.display = "none";
+  renderOnboardStep();
+  onboardingScreen.classList.add("visible");
+}
+function hideOnboarding() { onboardingScreen.classList.remove("visible"); }
+onboardingFinishBtn.addEventListener("click", hideOnboarding);
+onboardingSkipBtn.addEventListener("click", async () => {
+  saveCurrentOnboardStep();
+  await saveLearningPrefs(onboardingPrefs);
+  hideOnboarding();
+});
+
+/* ---- Learning prefs persistence ---- */
+async function loadLearningPrefs() {
+  try {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
+    learningPrefs = (snap.exists() && snap.data().learningPrefs) ? snap.data().learningPrefs : null;
+  } catch (_) { learningPrefs = null; }
+}
+async function saveLearningPrefs(prefs) {
+  learningPrefs = prefs;
+  try {
+    await setDoc(doc(db, "users", currentUser.uid), { learningPrefs: prefs }, { merge: true });
+  } catch (_) {}
 }
 
+/* ---- Settings: full-page, tabbed (accordion reused for learning prefs) ---- */
 function renderChecklistTasks(container, prefs, opts = {}) {
   container.innerHTML = "";
   Object.entries(LEARNING_CATEGORIES).forEach(([catId, cat]) => {
@@ -251,7 +332,6 @@ function renderChecklistTasks(container, prefs, opts = {}) {
       container.querySelectorAll(".checklist-task.open").forEach(t => t.classList.remove("open"));
       task.classList.toggle("open", !isOpen);
     });
-
     panel.querySelector(".checklist-panel-save").addEventListener("click", () => {
       const checked = Array.from(panel.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
       prefs[catId] = checked;
@@ -267,68 +347,40 @@ function renderChecklistTasks(container, prefs, opts = {}) {
     container.appendChild(task);
   });
 }
-
-let onboardingPrefs = emptyPrefs();
-
-function updateOnboardingProgress() {
-  const total = Object.keys(LEARNING_CATEGORIES).length;
-  const done  = countDone(onboardingPrefs);
-  const pct   = Math.round((done / total) * 100);
-  onboardingBarFill.style.width = pct + "%";
-  if (done === total) {
-    onboardingProgressLabel.style.display = "none";
-    onboardingCelebrate.classList.add("show");
-  } else {
-    onboardingProgressLabel.style.display = "";
-    onboardingProgressLabel.textContent = `${done} of ${total} done`;
-    onboardingCelebrate.classList.remove("show");
-  }
-}
-
-function showOnboarding() {
-  onboardingPrefs = emptyPrefs();
-  renderChecklistTasks(onboardingTasks, onboardingPrefs, { onChange: updateOnboardingProgress });
-  updateOnboardingProgress();
-  onboardingScreen.classList.add("visible");
-}
-function hideOnboarding() {
-  onboardingScreen.classList.remove("visible");
-}
-onboardingFinishBtn.addEventListener("click", async () => {
-  await saveLearningPrefs(onboardingPrefs);
-  hideOnboarding();
-});
-onboardingSkipBtn.addEventListener("click", async () => {
-  await saveLearningPrefs(onboardingPrefs);
-  hideOnboarding();
-});
-
-async function loadLearningPrefs() {
-  try {
-    const snap = await getDoc(doc(db, "users", currentUser.uid));
-    learningPrefs = (snap.exists() && snap.data().learningPrefs) ? snap.data().learningPrefs : null;
-  } catch (_) { learningPrefs = null; }
-}
-async function saveLearningPrefs(prefs) {
-  learningPrefs = prefs;
-  try {
-    await setDoc(doc(db, "users", currentUser.uid), { learningPrefs: prefs }, { merge: true });
-  } catch (_) {}
-}
-
-function openSettings() {
+function renderSettingsLearningTasks() {
   const prefs = learningPrefs ? JSON.parse(JSON.stringify(learningPrefs)) : emptyPrefs();
   renderChecklistTasks(settingsTasks, prefs, {
     onChange: (updated) => { saveLearningPrefs(updated); }
   });
+}
+function switchSettingsPanel(panelId) {
+  settingsNavItems.forEach(btn => btn.classList.toggle("active", btn.dataset.panel === panelId));
+  settingsPanels.forEach(panel => {
+    panel.style.display = panel.dataset.panel === panelId ? "block" : "none";
+  });
+}
+settingsNavItems.forEach(btn => {
+  btn.addEventListener("click", () => switchSettingsPanel(btn.dataset.panel));
+});
+function openSettings() {
+  if (currentUser) settingsAccountEmail.textContent = currentUser.email || "";
+  renderSettingsLearningTasks();
+  switchSettingsPanel("appearance");
   settingsScreen.classList.add("visible");
 }
-function closeSettings() {
-  settingsScreen.classList.remove("visible");
-}
-settingsClose.addEventListener("click", closeSettings);
-settingsScreen.addEventListener("click", e => { if (e.target === settingsScreen) closeSettings(); });
+function closeSettings() { settingsScreen.classList.remove("visible"); }
+settingsBack.addEventListener("click", closeSettings);
 settingsThemeBtn.addEventListener("click", toggleTheme);
+
+async function doSignOut() {
+  if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
+  await signOut(auth);
+  chats = {}; activeId = null;
+  messagesEl.innerHTML = ""; historyList.innerHTML = "";
+  chatTitleEl.textContent = "New Chat";
+  closeSettings();
+}
+settingsSignoutBtn.addEventListener("click", doSignOut);
 
 onAuthStateChanged(auth, async user => {
   loadingEl.style.display = "none";
@@ -789,16 +841,6 @@ async function handleSend() {
     });
     clearFile(); scheduleSave(activeId);
     await getResponse();
-    return;
-  }
-
-  if(pendingImageContext && pendingImageContext.chatId===activeId){
-    const imgFile = pendingImageContext.file;
-    pendingImageContext = null;
-    isStreaming=true;
-    sendBtn.disabled=true; stopBtn.style.display="inline-block"; retryBtn.style.display="none";
-    addBubble("user", esc(text));
-    await sendImageDirect(imgFile, text, true);
     return;
   }
 
