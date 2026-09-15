@@ -6,6 +6,7 @@ import base64
 import fitz
 import groq
 import json
+from math_solver import is_math_question, solve_math
 
 load_dotenv()
 
@@ -70,12 +71,27 @@ async def chat(
     chat_history = json.loads(history)
     messages = [{"role": "system", "content": build_system(prefs)}]
     messages += chat_history
-    messages.append({"role": "user", "content": message})
+
+    user_message = message
+    if is_math_question(message):
+        solved = solve_math(message)
+        if solved.get("success"):
+            user_message = (
+                f"{message}\n\n"
+                f"[Verified exact answer, computed with a symbolic maths engine. "
+                f"Do not recompute this yourself, do not contradict it, treat it as ground truth.]\n"
+                f"Method used: {solved['method']}\n"
+                f"Exact result: {solved['result_str']}\n\n"
+                f"Explain step by step, in the same simple everyday style as usual, how one would arrive at this exact result. "
+                f"End your reply with a clear line: Answer: {solved['result_str']}"
+            )
+
+    messages.append({"role": "user", "content": user_message})
 
     response = client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=messages,
-        max_tokens=1024,
+        max_tokens=1536,
     )
 
     reply = clean_reply(response.choices[0].message)
