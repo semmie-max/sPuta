@@ -1290,8 +1290,8 @@ async function reexplainMisunderstood(explanation, misunderstoodPoints) {
 
 let thinkingTimer=null, thinkingCycle=null, thinkingStart=0;
 const THINKING_PHRASES=[
-  "Reading your message...",
-  "Thinking it through...",
+  "Sifting...",
+  "musing ...",
   "Looking for the simplest way to say this...",
   "Choosing easy, everyday words...",
   "Putting the explanation together..."
