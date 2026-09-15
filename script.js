@@ -1506,13 +1506,13 @@ function sendNotification(title, body) {
     navigator.serviceWorker.ready.then(reg => {
       reg.showNotification(title, {
         body: body,
-        icon: "icon-512.png",
-        badge: "icon-192.png",
+        icon: "images/fav.jpg",
+        badge: "images/fav.jpg",
         vibrate: [200, 100, 200]
       });
     });
   } else {
-    const n = new Notification(title, { body, icon: "icon-512.png" });
+    const n = new Notification(title, { body, icon: "images/fav.jpg" });
     setTimeout(() => n.close(), 5000);
   }
 }

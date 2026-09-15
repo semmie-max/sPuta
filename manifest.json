@@ -1,0 +1,19 @@
+{
+  "name": "sPutta",
+  "short_name": "sPutta",
+  "description": "Difficult Things, Explained",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0e0d",
+  "theme_color": "#0e0e0d",
+  "icons": [
+    {
+      "src": "images/fav.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
