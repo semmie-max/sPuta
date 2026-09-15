@@ -53,6 +53,14 @@ def build_system(prefs: str = "") -> str:
     return SYSTEM
 
 
+def strip_json_fences(raw):
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(json)?", "", raw).strip()
+        raw = re.sub(r"```$", "", raw).strip()
+    return raw
+
+
 @app.post("/chat")
 async def chat(
     message: str = Form(...),
@@ -72,6 +80,119 @@ async def chat(
 
     reply = clean_reply(response.choices[0].message)
     return {"reply": reply}
+
+
+@app.post("/quiz")
+async def quiz(
+    explanation: str = Form(...),
+    prefs: str = Form(default="")
+):
+    quiz_prompt = f"""Based on the following explanation, create quiz questions to check if the learner understood it.
+
+Decide how many questions to ask, based on how much there is to check in this explanation. Use a mix of question types:
+- "mcq" for a question with a clear right answer among a few choices
+- "open" for a question that needs a short typed answer in the learner's own words
+
+Explanation:
+{explanation}
+
+Respond with ONLY valid JSON, no markdown fences, no extra text, in this exact shape:
+{{
+  "questions": [
+    {{"type": "mcq", "question": "...", "options": ["...", "...", "..."], "correct_index": 0}},
+    {{"type": "open", "question": "...", "expected_answer": "short description of what a correct answer should include"}}
+  ]
+}}"""
+
+    messages = [
+        {"role": "system", "content": build_system(prefs)},
+        {"role": "user", "content": quiz_prompt}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=messages,
+            max_tokens=1024,
+        )
+        raw = strip_json_fences(clean_reply(response.choices[0].message))
+        data = json.loads(raw)
+        if not data.get("questions"):
+            return {"error": "Could not build questions for this."}
+        return data
+    except Exception:
+        return {"error": "Could not build questions for this."}
+
+
+@app.post("/check-answer")
+async def check_answer(
+    question: str = Form(...),
+    question_type: str = Form(...),
+    correct_answer: str = Form(...),
+    user_answer: str = Form(...),
+    prefs: str = Form(default="")
+):
+    check_prompt = f"""A learner was asked this question to check their understanding:
+
+Question: {question}
+Correct answer / what a good answer should include: {correct_answer}
+Learner's answer: {user_answer}
+
+Judge if the learner's answer is correct, partially correct, or incorrect. Then respond with ONLY valid JSON, no markdown fences, no extra text, in this exact shape:
+{{
+  "correct": true or false,
+  "feedback": "one or two short encouraging sentences explaining why, in simple words",
+  "misunderstood": "a short plain description of exactly what part they got wrong, or null if fully correct"
+}}"""
+
+    messages = [
+        {"role": "system", "content": build_system(prefs)},
+        {"role": "user", "content": check_prompt}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=messages,
+            max_tokens=512,
+        )
+        raw = strip_json_fences(clean_reply(response.choices[0].message))
+        data = json.loads(raw)
+        return data
+    except Exception:
+        return {"error": "Could not check this answer."}
+
+
+@app.post("/reexplain")
+async def reexplain(
+    original_explanation: str = Form(...),
+    misunderstood_points: str = Form(...),
+    prefs: str = Form(default="")
+):
+    reexplain_prompt = f"""Here is an explanation you gave earlier:
+
+{original_explanation}
+
+The learner got these specific parts wrong or misunderstood:
+{misunderstood_points}
+
+Re-explain ONLY the misunderstood parts, using a different angle or example than before so it clicks this time. Do not repeat the whole original explanation, just the parts that were misunderstood. Keep it short and simple."""
+
+    messages = [
+        {"role": "system", "content": build_system(prefs)},
+        {"role": "user", "content": reexplain_prompt}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=messages,
+            max_tokens=1024,
+        )
+        reply = clean_reply(response.choices[0].message)
+        return {"reply": reply}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.post("/extract")

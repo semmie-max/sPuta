@@ -19,6 +19,7 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 const API_URL = "https://sputa.onrender.com/chat";
+const API_BASE = API_URL.replace(/\/chat$/, "");
 const SYSTEM = `You are a patient, friendly teacher. Your job is to take complex text and explain it simply as if talking to a curious young child who has never heard these words before.
 
 Rules:
@@ -168,6 +169,7 @@ let isStreaming = false;
 let lightMode   = false;
 let saveTimer   = null;
 let learningPrefs = null;
+let activeQuizState = null;
 
 const LEARNING_CATEGORIES = {
   reading: {
@@ -904,7 +906,6 @@ async function handleSend() {
 async function sendImageDirect(file, question, skipUploadBubble=false) {
   if(!skipUploadBubble) addBubble("user", `<strong>Uploaded:</strong> ${esc(file.name)}`);
   showTyping();
-  const API_BASE = API_URL.replace(/\/chat$/, "");
   const formData = new FormData();
   formData.append("file", file);
   if(question) formData.append("question", question);
@@ -915,7 +916,7 @@ async function sendImageDirect(file, question, skipUploadBubble=false) {
     if (!res.ok || data.error) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
     finalizeThinking();
     const reply = data?.reply || "Sorry, I could not read this image.";
-    addBubble("ai", safe(marked.parse(reply)));
+    addBubble("ai", safe(marked.parse(reply)), "", reply);
     chats[activeId].msgs.push({role:"user", content: question ? question : `[Uploaded image: ${file.name}]`, _hidden:true});
     chats[activeId].msgs.push({role:"assistant", content:reply});
     scheduleSave(activeId);
@@ -960,7 +961,7 @@ if(!res.ok) throw new Error(data?.detail||`HTTP ${res.status}`);
 finalizeThinking();
 const reply=data?.reply||"Sorry, I could not generate a response.";
     const responseTime = ((Date.now() - responseStart) / 1000).toFixed(1);
-addBubble("ai", safe(marked.parse(reply)), responseTime);
+addBubble("ai", safe(marked.parse(reply)), responseTime, reply);
     if (document.hidden) {
   sendNotification("PDF sPutta", "Your explanation is ready!");
 }
@@ -1106,14 +1107,187 @@ function renderIntro() {
   });
 }
 
-function addBubble(role, html, responseTime="") {
+function addBubble(role, html, responseTime="", explanationForQuiz=null) {
   messagesEl.querySelector(".intro-wrap")?.remove();
   const wrap=document.createElement("div");
   if(role==="user"){ wrap.className="msg-wrap user"; wrap.innerHTML=`<div class="bubble-user">${html}</div>`; }
-  else { wrap.className="msg-wrap ai"; wrap.innerHTML=`<div class="ai-header"><div class="ai-badge">Simple</div><div class="ai-line"></div></div><div class="bubble-ai">${html}</div>${responseTime ? `<div class="response-timer">⏱ ${responseTime}s</div>` : ""}`; }
+  else {
+    wrap.className="msg-wrap ai";
+    wrap.innerHTML=`<div class="ai-header"><div class="ai-badge">Simple</div><div class="ai-line"></div></div><div class="bubble-ai">${html}</div>${responseTime ? `<div class="response-timer">⏱ ${responseTime}s</div>` : ""}${explanationForQuiz ? `<button type="button" class="check-understanding-btn">Check Understanding</button>` : ""}`;
+  }
   messagesEl.appendChild(wrap);
+  if(explanationForQuiz){
+    wrap.querySelector(".check-understanding-btn").addEventListener("click", (e) => {
+      e.target.remove();
+      startQuiz(explanationForQuiz, wrap);
+    });
+  }
   messagesEl.scrollTop=messagesEl.scrollHeight;
 }
+async function startQuiz(explanationText, afterEl) {
+  const loadingWrap = document.createElement("div");
+  loadingWrap.className = "quiz-loading";
+  loadingWrap.textContent = "Building a couple of questions to check this landed...";
+  afterEl.insertAdjacentElement("afterend", loadingWrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const formData = new FormData();
+    formData.append("explanation", explanationText);
+    formData.append("prefs", buildPrefsInstruction());
+    const res = await fetch(`${API_BASE}/quiz`, { method: "POST", mode: "cors", body: formData });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.questions || !data.questions.length) {
+      throw new Error(data?.error || "Could not build questions for this.");
+    }
+    activeQuizState = {
+      explanation: explanationText,
+      questions: data.questions,
+      index: 0,
+      misunderstood: []
+    };
+    loadingWrap.remove();
+    renderQuizQuestion();
+  } catch (err) {
+    loadingWrap.remove();
+    toast("Could not start check: " + err.message);
+  }
+}
+
+function renderQuizQuestion() {
+  const state = activeQuizState;
+  if (!state) return;
+  const q = state.questions[state.index];
+  const total = state.questions.length;
+
+  const wrap = document.createElement("div");
+  wrap.className = "msg-wrap ai";
+
+  let bodyHtml = "";
+  if (q.type === "mcq") {
+    bodyHtml = `<div class="quiz-options">${q.options.map((opt, i) => `<button type="button" class="quiz-option-btn" data-index="${i}">${esc(opt)}</button>`).join("")}</div>`;
+  } else {
+    bodyHtml = `<div class="quiz-open-row"><input type="text" class="quiz-input" placeholder="Type your answer..." /><button type="button" class="quiz-submit-btn">Submit</button></div>`;
+  }
+
+  wrap.innerHTML = `<div class="quiz-card">
+    <div class="quiz-label">Check ${state.index + 1} of ${total}</div>
+    <div class="quiz-question">${esc(q.question)}</div>
+    ${bodyHtml}
+    <div class="quiz-feedback" style="display:none"></div>
+    <button type="button" class="quiz-continue-btn" style="display:none">Continue</button>
+  </div>`;
+
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  if (q.type === "mcq") {
+    wrap.querySelectorAll(".quiz-option-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        wrap.querySelectorAll(".quiz-option-btn").forEach(b => b.disabled = true);
+        btn.classList.add("quiz-picked");
+        submitQuizAnswer(wrap, q.options[btn.dataset.index]);
+      });
+    });
+  } else {
+    const input = wrap.querySelector(".quiz-input");
+    const submitBtn = wrap.querySelector(".quiz-submit-btn");
+    const submit = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      input.disabled = true;
+      submitBtn.disabled = true;
+      submitQuizAnswer(wrap, val);
+    };
+    submitBtn.addEventListener("click", submit);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+  }
+}
+
+async function submitQuizAnswer(wrap, userAnswer) {
+  const state = activeQuizState;
+  const q = state.questions[state.index];
+  const feedbackEl = wrap.querySelector(".quiz-feedback");
+  feedbackEl.style.display = "block";
+  feedbackEl.className = "quiz-feedback quiz-feedback-loading";
+  feedbackEl.textContent = "Checking...";
+
+  const correctAnswer = q.type === "mcq" ? q.options[q.correct_index] : q.expected_answer;
+
+  try {
+    const formData = new FormData();
+    formData.append("question", q.question);
+    formData.append("question_type", q.type);
+    formData.append("correct_answer", correctAnswer);
+    formData.append("user_answer", userAnswer);
+    formData.append("prefs", buildPrefsInstruction());
+    const res = await fetch(`${API_BASE}/check-answer`, { method: "POST", mode: "cors", body: formData });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data?.error || "Could not check this answer.");
+
+    if (q.type === "mcq") {
+      wrap.querySelectorAll(".quiz-option-btn").forEach(b => {
+        if (parseInt(b.dataset.index) === q.correct_index) b.classList.add("quiz-correct");
+        else if (b.classList.contains("quiz-picked") && !data.correct) b.classList.add("quiz-wrong");
+      });
+    }
+
+    feedbackEl.className = "quiz-feedback " + (data.correct ? "quiz-feedback-correct" : "quiz-feedback-wrong");
+    feedbackEl.textContent = data.feedback || (data.correct ? "That's right." : "Not quite.");
+
+    if (!data.correct && data.misunderstood) {
+      state.misunderstood.push(data.misunderstood);
+    }
+  } catch (err) {
+    feedbackEl.className = "quiz-feedback quiz-feedback-wrong";
+    feedbackEl.textContent = "Could not check that: " + err.message;
+  }
+
+  const continueBtn = wrap.querySelector(".quiz-continue-btn");
+  continueBtn.style.display = "inline-block";
+  continueBtn.addEventListener("click", () => continueQuiz(wrap), { once: true });
+}
+
+async function continueQuiz(wrap) {
+  wrap.remove();
+  const state = activeQuizState;
+  if (!state) return;
+  state.index++;
+  if (state.index < state.questions.length) {
+    renderQuizQuestion();
+    return;
+  }
+  if (state.misunderstood.length) {
+    await reexplainMisunderstood(state.explanation, state.misunderstood);
+  } else {
+    addBubble("ai", "Nice, you've got this one down.");
+  }
+  activeQuizState = null;
+}
+
+async function reexplainMisunderstood(explanation, misunderstoodPoints) {
+  showTyping();
+  try {
+    const formData = new FormData();
+    formData.append("original_explanation", explanation);
+    formData.append("misunderstood_points", misunderstoodPoints.map(p => "- " + p).join("\n"));
+    formData.append("prefs", buildPrefsInstruction());
+    const res = await fetch(`${API_BASE}/reexplain`, { method: "POST", mode: "cors", body: formData });
+    const data = await res.json();
+    finalizeThinking();
+    if (!res.ok || data.error) throw new Error(data?.error || "Could not re-explain.");
+    const reply = data?.reply || "";
+    addBubble("ai", safe(marked.parse(reply)), "", reply);
+    if (chats[activeId]) {
+      chats[activeId].msgs.push({ role: "assistant", content: reply });
+      scheduleSave(activeId);
+    }
+  } catch (err) {
+    removeTyping();
+    addBubble("ai", `Could not re-explain: ${esc(err.message)}`);
+  }
+}
+
 let thinkingTimer=null, thinkingCycle=null, thinkingStart=0;
 const THINKING_PHRASES=[
   "Reading your message...",
