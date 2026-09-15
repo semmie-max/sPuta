@@ -85,6 +85,15 @@ async def chat(
                 f"Explain step by step, in the same simple everyday style as usual, how one would arrive at this exact result. "
                 f"End your reply with a clear line: Answer: {solved['result_str']}"
             )
+        else:
+            user_message = (
+                f"{message}\n\n"
+                f"[The maths engine could not read this question, so you do not have a verified exact answer for it. "
+                f"Do your best to solve it yourself, showing your steps, but say clearly if you are not fully sure of the result. "
+                f"Then, at the end, gently ask the learner to try rewriting it in a clearer format, and give one matching example, "
+                f"such as: solve y'' + y = 0, or solve dy/dx = 2x, or 2x + 5 = 17, or integrate x^2 from 0 to 3, depending on what kind of "
+                f"question they were asking. Keep this suggestion short and friendly, not technical.]"
+            )
 
     messages.append({"role": "user", "content": user_message})
 
