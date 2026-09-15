@@ -102,6 +102,7 @@
       </div>
       <button class="settings-nav-item active" data-panel="appearance">Appearance</button>
       <button class="settings-nav-item" data-panel="learning">How You Learn Best</button>
+      <button class="settings-nav-item" data-panel="familiarity">Familiarity Mode</button>
       <button class="settings-nav-item" data-panel="account">Account</button>
     </nav>
     <div class="settings-content">
@@ -119,6 +120,16 @@
         <div class="settings-panel-title">How You Learn Best</div>
         <div class="settings-panel-desc">Choose whatever makes information easier for you. Changes save automatically.</div>
         <div class="checklist-tasks" id="settings-tasks"></div>
+      </div>
+      <div class="settings-panel" data-panel="familiarity" style="display:none">
+        <div class="settings-panel-title">Familiarity Mode</div>
+        <div class="settings-panel-desc">Pick things you already know well. Sputa will use them to explain new ideas. Changes save automatically.</div>
+        <div class="familiarity-options" id="familiarity-options"></div>
+        <div class="familiarity-custom-row">
+          <input type="text" id="familiarity-custom-input" class="familiarity-custom-input" placeholder="Add your own, e.g. Fashion, Farming..." maxlength="40" />
+          <button type="button" id="familiarity-custom-add" class="familiarity-custom-add-btn">Add</button>
+        </div>
+        <div class="familiarity-custom-list" id="familiarity-custom-list"></div>
       </div>
       <div class="settings-panel" data-panel="account" style="display:none">
         <div class="settings-panel-title">Account</div>

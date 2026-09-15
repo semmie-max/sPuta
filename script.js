@@ -128,6 +128,10 @@ const settingsNavItems     = document.querySelectorAll(".settings-nav-item");
 const settingsPanels       = document.querySelectorAll(".settings-panel");
 const settingsThemeBtn     = $("settings-theme-btn");
 const settingsTasks        = $("settings-tasks");
+const settingsFamiliarityOptions = $("familiarity-options");
+const familiarityCustomInput     = $("familiarity-custom-input");
+const familiarityCustomAdd       = $("familiarity-custom-add");
+const familiarityCustomList      = $("familiarity-custom-list");
 const settingsAccountEmail = $("settings-account-email");
 const settingsSignoutBtn   = $("settings-signout-btn");
 
@@ -169,6 +173,7 @@ let isStreaming = false;
 let lightMode   = false;
 let saveTimer   = null;
 let learningPrefs = null;
+let familiarityDomains = [];
 let activeQuizState = null;
 
 const LEARNING_CATEGORIES = {
@@ -288,9 +293,68 @@ onboardingSkipBtn.addEventListener("click", async () => {
 async function loadLearningPrefs() {
   try {
     const snap = await getDoc(doc(db, "users", currentUser.uid));
-    learningPrefs = (snap.exists() && snap.data().learningPrefs) ? snap.data().learningPrefs : null;
-  } catch (_) { learningPrefs = null; }
+    const data = snap.exists() ? snap.data() : null;
+    learningPrefs = data && data.learningPrefs ? data.learningPrefs : null;
+    familiarityDomains = data && data.familiarityDomains ? data.familiarityDomains : [];
+  } catch (_) { learningPrefs = null; familiarityDomains = []; }
 }
+
+async function saveFamiliarityDomains(domains) {
+  familiarityDomains = domains;
+  try {
+    await setDoc(doc(db, "users", currentUser.uid), { familiarityDomains: domains }, { merge: true });
+  } catch (_) {}
+}
+
+const FIXED_DOMAINS = ["Music", "Sports", "Gaming", "Movies & TV", "Cooking & Food", "Everyday Life", "Cars & Vehicles", "Nature & Animals"];
+
+function renderFamiliarityPanel() {
+  const selected = familiarityDomains || [];
+  settingsFamiliarityOptions.innerHTML = FIXED_DOMAINS.map(domain => `
+    <label>
+      <input type="checkbox" value="${esc(domain)}" ${selected.includes(domain) ? "checked" : ""}>
+      <span>${esc(domain)}</span>
+    </label>
+  `).join("");
+
+  settingsFamiliarityOptions.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const fixedChecked = Array.from(settingsFamiliarityOptions.querySelectorAll("input:checked")).map(c => c.value);
+      const customOnes = (familiarityDomains || []).filter(d => !FIXED_DOMAINS.includes(d));
+      saveFamiliarityDomains([...fixedChecked, ...customOnes]);
+    });
+  });
+
+  renderFamiliarityCustomChips();
+}
+
+function renderFamiliarityCustomChips() {
+  const customOnes = (familiarityDomains || []).filter(d => !FIXED_DOMAINS.includes(d));
+  familiarityCustomList.innerHTML = customOnes.map(d => `
+    <span class="familiarity-chip">${esc(d)}<button type="button" class="familiarity-chip-remove" data-domain="${esc(d)}">&times;</button></span>
+  `).join("");
+  familiarityCustomList.querySelectorAll(".familiarity-chip-remove").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const updated = (familiarityDomains || []).filter(d => d !== btn.dataset.domain);
+      saveFamiliarityDomains(updated);
+      renderFamiliarityPanel();
+    });
+  });
+}
+
+familiarityCustomAdd.addEventListener("click", () => {
+  const val = familiarityCustomInput.value.trim();
+  if (!val) return;
+  const current = familiarityDomains || [];
+  if (current.some(d => d.toLowerCase() === val.toLowerCase())) { familiarityCustomInput.value = ""; return; }
+  const updated = [...current, val];
+  saveFamiliarityDomains(updated);
+  familiarityCustomInput.value = "";
+  renderFamiliarityPanel();
+});
+familiarityCustomInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); familiarityCustomAdd.click(); }
+});
 async function saveLearningPrefs(prefs) {
   learningPrefs = prefs;
   try {
@@ -322,13 +386,17 @@ const PREF_INSTRUCTIONS = {
 };
 
 function buildPrefsInstruction() {
-  if (!learningPrefs) return "";
   const lines = [];
-  Object.values(learningPrefs).forEach(list => {
-    (list || []).forEach(optId => {
-      if (PREF_INSTRUCTIONS[optId]) lines.push("- " + PREF_INSTRUCTIONS[optId]);
+  if (learningPrefs) {
+    Object.values(learningPrefs).forEach(list => {
+      (list || []).forEach(optId => {
+        if (PREF_INSTRUCTIONS[optId]) lines.push("- " + PREF_INSTRUCTIONS[optId]);
+      });
     });
-  });
+  }
+  if (familiarityDomains && familiarityDomains.length) {
+    lines.push("- Whenever it helps explain a difficult concept, reach for analogies and examples from these familiar areas: " + familiarityDomains.join(", ") + ".");
+  }
   if (!lines.length) return "";
   return "The user has told us how they learn best. Follow these rules in every reply:\n" + lines.join("\n");
 }
@@ -402,6 +470,7 @@ settingsNavItems.forEach(btn => {
 function openSettings() {
   if (currentUser) settingsAccountEmail.textContent = currentUser.email || "";
   renderSettingsLearningTasks();
+  renderFamiliarityPanel();
   switchSettingsPanel("appearance");
   settingsScreen.classList.add("visible");
 }
