@@ -39,8 +39,8 @@ Rules:
 - Be warm and encouraging.
 - Never use emojis.
 - When someone uploads a file, first ask them clearly what they want from it. Give them options: a full simple explanation, a short summary, just the key points, or specific questions answered. Wait for their answer before explaining anything.
-- When given a specific instruction about the file, follow it thoroughly."""
-
+- When given a specific instruction about the file, follow it thoroughly.
+- If the user asks a maths, physics or logic question, actually solve it. Show the working one step at a time, explain in simple words what is happening at each step, and end with the final answer clearly on its own line, like "Answer: ...". Use the same simple everyday language as everything else."""
 
 @app.get("/")
 def root():
