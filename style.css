@@ -195,6 +195,9 @@ textarea { font-family: var(--ff-body); }
 }
 .auth-error.show { display: block; }
 .auth-divider { text-align: center; margin: 16px 0 4px; }
+.auth-card { position: relative; }
+.auth-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 1px solid var(--border2); border-radius: 8px; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.auth-close:hover { border-color: var(--green); color: var(--green); }
 .auth-divider span { font-size: 11.5px; color: var(--faint); }
 .auth-note { font-size: 11.5px; color: var(--faint); text-align: center; line-height: 1.5; margin-top: 14px; }
 .forgot-link { font-size: 11.5px; color: var(--muted); text-align: right; margin-top: -8px; margin-bottom: 14px; cursor: pointer; text-decoration: underline; transition: color 0.15s; }

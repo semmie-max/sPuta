@@ -108,6 +108,10 @@ const accountSub     = $("account-sub");
 const menuSettings   = $("menu-settings");
 const menuExport     = $("menu-export");
 const menuSignout    = $("menu-signout");
+const topbarSignin   = $("topbar-signin");
+const authClose      = $("auth-close");
+topbarSignin.addEventListener("click", () => { authEl.classList.add("visible"); });
+authClose.addEventListener("click", () => { authEl.classList.remove("visible"); });
 
 const onboardingScreen     = $("onboarding-screen");
 const onboardStepLabel     = $("onboard-step-label");
@@ -494,8 +498,11 @@ onAuthStateChanged(auth, async user => {
   } else {
     currentUser = null;
     chats = {}; activeId = null;
+    learningPrefs = null; familiarityDomains = [];
     hideUserUI();
-    authEl.classList.add("visible");
+    authEl.classList.remove("visible");
+    messagesEl.innerHTML = ""; historyList.innerHTML = "";
+    createChat();
   }
 });
 
@@ -556,9 +563,11 @@ function showUserUI(user) {
   accountName.textContent = "My Account";
   accountSub.textContent = user.email || "";
   sidebarBottom.style.display = "block";
+  topbarSignin.style.display = "none";
 }
 function hideUserUI() {
   sidebarBottom.style.display = "none";
+  topbarSignin.style.display = "inline-block";
 }
 function setAuthLoading(btn, on) {
   btn.disabled = on; btn.classList.toggle("loading", on);
