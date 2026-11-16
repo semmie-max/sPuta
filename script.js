@@ -487,13 +487,27 @@ settingsSignoutBtn.addEventListener("click", doSignOut);
 onAuthStateChanged(auth, async user => {
   loadingEl.style.display = "none";
   if (user) {
+    const guestChats = {};
+    if (!currentUser) {
+      Object.keys(chats).forEach(id => {
+        if (chats[id].msgs && chats[id].msgs.length) guestChats[id] = chats[id];
+      });
+    }
+    const guestActiveId = activeId;
     currentUser = user;
     showUserUI(user);
     requestNotificationPermission();
     await loadChatsFromFirestore();
     await loadLearningPrefs();
+    const guestIds = Object.keys(guestChats);
+    for (const id of guestIds) {
+      chats[id] = guestChats[id];
+      await persistChat(id);
+    }
     const ids = Object.keys(chats).sort((a,b) => chats[b].ts - chats[a].ts);
-    if (ids.length) loadChat(ids[0]); else createChat();
+    if (guestIds.length) loadChat(guestChats[guestActiveId] ? guestActiveId : guestIds[0]);
+    else if (ids.length) loadChat(ids[0]);
+    else createChat();
     if (!learningPrefs) showOnboarding();
   } else {
     currentUser = null;
