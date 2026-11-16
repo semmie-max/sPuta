@@ -99,6 +99,32 @@ const clearAllBtn=$("clear-all");
 const menuBtn   = $("menu-btn");
 const sidebar   = $("sidebar");
 const overlay   = $("overlay");
+const sidebarResizer = $("sidebar-resizer");
+let resizingSidebar = false;
+let sidebarWidth = parseInt(localStorage.getItem("sputta-sidebar-w"), 10) || 0;
+if (sidebarWidth) document.documentElement.style.setProperty("--sidebar-w", sidebarWidth + "px");
+sidebarResizer.addEventListener("mousedown", e => {
+  resizingSidebar = true;
+  sidebar.classList.add("resizing");
+  sidebarResizer.classList.add("dragging");
+  document.body.style.userSelect = "none";
+  document.body.style.cursor = "col-resize";
+  e.preventDefault();
+});
+document.addEventListener("mousemove", e => {
+  if (!resizingSidebar) return;
+  sidebarWidth = Math.min(420, Math.max(200, e.clientX));
+  document.documentElement.style.setProperty("--sidebar-w", sidebarWidth + "px");
+});
+document.addEventListener("mouseup", () => {
+  if (!resizingSidebar) return;
+  resizingSidebar = false;
+  sidebar.classList.remove("resizing");
+  sidebarResizer.classList.remove("dragging");
+  document.body.style.userSelect = "";
+  document.body.style.cursor = "";
+  try { localStorage.setItem("sputta-sidebar-w", String(sidebarWidth)); } catch (_) {}
+});
 const sidebarBottom = $("sidebar-bottom");
 const accountBtn     = $("account-btn");
 const accountMenu    = $("account-menu");
