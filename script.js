@@ -68,6 +68,7 @@ const SKILLS = {
   questions: { label: "Answer My Questions", instruction: "I have specific questions about this — wait for me to ask them, then answer thoroughly." }
 };
 let pendingLabel = null;
+let selectedSkill = null;
 let lastEnhanceOriginal = "";
 const historyList=$("history-list");
 const chatTitleEl=$("chat-title");
@@ -655,16 +656,7 @@ function placeCaretAtEnd(el){
   sel.addRange(range);
 }
 function getComposedMessage(){
-  let out="";
-  msgField.childNodes.forEach(node=>{
-    if(node.nodeType===Node.ELEMENT_NODE && node.classList?.contains("pi-skill-pill")){
-      const skill = SKILLS[node.dataset.skill];
-      if(skill) out += `[${skill.label}: ${skill.instruction}] `;
-    } else {
-      out += node.textContent;
-    }
-  });
-  return out.trim();
+  return msgField.textContent.trim();
 }
 function insertSkillPill(id){
   const skill = SKILLS[id];
@@ -686,7 +678,8 @@ function stripTrailingSlashText(){
 }
 function selectSkill(id){
   stripTrailingSlashText();
-  insertSkillPill(id);
+  selectedSkill = id;
+  renderChips();
   closeSlashMenu();
   closePlusMenu();
   msgField.focus();
@@ -810,13 +803,23 @@ function handleFile(file) {
 function clearFile() { pendingFile=null; pendingLabel=null; renderChips(); }
 function renderChips(){
   piChips.innerHTML = "";
-  if(!pendingFile){ piChips.style.display="none"; return; }
+  if(!pendingFile && !selectedSkill){ piChips.style.display="none"; return; }
   piChips.style.display="flex";
-  const chip=document.createElement("div");
-  chip.className="pi-chip";
-  chip.innerHTML = `<span>${esc(pendingFile.name)}</span> <span style="opacity:.6">· ${(pendingFile.size/1024).toFixed(0)} KB · ${esc(pendingLabel)}</span> <button type="button" class="pi-chip-remove">&times;</button>`;
-  chip.querySelector(".pi-chip-remove").addEventListener("click", clearFile);
-  piChips.appendChild(chip);
+  if(selectedSkill){
+    const s = SKILLS[selectedSkill];
+    const skillChip=document.createElement("div");
+    skillChip.className="pi-chip pi-chip-skill";
+    skillChip.innerHTML = `<span>${esc(s.label)}</span> <button type="button" class="pi-chip-remove">&times;</button>`;
+    skillChip.querySelector(".pi-chip-remove").addEventListener("click", ()=>{ selectedSkill=null; renderChips(); });
+    piChips.appendChild(skillChip);
+  }
+  if(pendingFile){
+    const chip=document.createElement("div");
+    chip.className="pi-chip";
+    chip.innerHTML = `<span>${esc(pendingFile.name)}</span> <span style="opacity:.6">· ${(pendingFile.size/1024).toFixed(0)} KB · ${esc(pendingLabel)}</span> <button type="button" class="pi-chip-remove">&times;</button>`;
+    chip.querySelector(".pi-chip-remove").addEventListener("click", clearFile);
+    piChips.appendChild(chip);
+  }
 }
 
 async function extractText(file) {
@@ -907,7 +910,7 @@ async function extractImage(file) {
 async function handleSend() {
   if(isStreaming) return;
   const text=getComposedMessage();
-  if(!text&&!pendingFile) return;
+  if(!text&&!pendingFile&&!selectedSkill) return;
   msgField.innerHTML=""; updateFieldEmptyState();
   if(!chats[activeId]) createChat();
 
@@ -951,11 +954,14 @@ async function handleSend() {
     return;
   }
 
-  addBubble("user", esc(text));
-  chats[activeId].msgs.push({role:"user", content:text});
+  const skill = selectedSkill ? SKILLS[selectedSkill] : null;
+  const sendText = skill ? `[${skill.label}: ${skill.instruction}] ${text}`.trim() : text;
+  selectedSkill = null; renderChips();
+  addBubble("user", (skill ? `<strong>${esc(skill.label)}</strong>${text ? "<br>" : ""}` : "") + esc(text));
+  chats[activeId].msgs.push({role:"user", content:sendText});
   const userVisible=chats[activeId].msgs.filter(m=>m.role==="user"&&!m._hidden).length;
   if(userVisible===1){
-    chats[activeId].title=text.slice(0,32);
+    chats[activeId].title=(text || (skill ? skill.label : "New Chat")).slice(0,32);
     chatTitleEl.textContent=chats[activeId].title;
     renderSidebar();
   }
@@ -1058,7 +1064,7 @@ function loadChat(id) {
   messagesEl.innerHTML="";
   chats[id].msgs.forEach(m=>{
     if(m._hidden) return;
-    if(m.role==="user") addBubble("user", esc(m.content));
+    if(m.role==="user") addBubble("user", esc(m.content.replace(/^\[[^\]]*\]\s*/, "")));
     else addBubble("ai", safe(marked.parse(m.content)));
   });
   if(!chats[id].msgs.filter(m=>!m._hidden).length) renderIntro();
