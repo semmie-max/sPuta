@@ -1207,8 +1207,8 @@ function renderIntro() {
   const wrap=document.createElement("div");
   wrap.innerHTML=`
     <div class="intro-wrap">
-      <h1 class="intro-heading">What's on your mind?</h1>
-      <p class="intro-sub">Ask a question or drop a file, image or PDF to get a simple explanation.</p>
+      <h1 class="intro-heading">Let's work through something.</h1>
+      <p class="intro-sub">Whatever you're trying to figure out, start here.</p>
       <div class="chips-row">
         <button class="chip">How does a leveraged buyout affect shareholders?</button>
         <button class="chip">What is the role of blockchain in digital identity verification?</button>
