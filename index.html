@@ -104,23 +104,12 @@
         </button>
         <div class="settings-nav-title">Settings</div>
       </div>
-      <button class="settings-nav-item active" data-panel="appearance">Appearance</button>
-      <button class="settings-nav-item" data-panel="learning">How You Learn Best</button>
+      <button class="settings-nav-item active" data-panel="learning">How You Learn Best</button>
       <button class="settings-nav-item" data-panel="familiarity">Familiarity Mode</button>
       <button class="settings-nav-item" data-panel="account">Account</button>
     </nav>
     <div class="settings-content">
-      <div class="settings-panel" data-panel="appearance">
-        <div class="settings-panel-title">Appearance</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row-label">Theme</div>
-            <div class="settings-row-desc">Switch between dark and light mode.</div>
-          </div>
-          <button class="pi-pill-btn" id="settings-theme-btn">Toggle Theme</button>
-        </div>
-      </div>
-      <div class="settings-panel" data-panel="learning" style="display:none">
+      <div class="settings-panel" data-panel="learning">
         <div class="settings-panel-title">How You Learn Best</div>
         <div class="settings-panel-desc">Choose whatever makes information easier for you. Changes save automatically.</div>
         <div class="checklist-tasks" id="settings-tasks"></div>
@@ -183,10 +172,6 @@
     <svg class="account-chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
   </button>
   <div class="account-menu" id="account-menu">
-    <button class="account-menu-item" id="menu-theme">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      Toggle Theme
-    </button>
         <button class="account-menu-item" id="menu-settings">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Settings

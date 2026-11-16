@@ -104,7 +104,6 @@ const accountMenu    = $("account-menu");
 const accountAvatarLg= $("account-avatar-lg");
 const accountName    = $("account-name");
 const accountSub     = $("account-sub");
-const menuTheme      = $("menu-theme");
 const menuSettings   = $("menu-settings");
 const menuExport     = $("menu-export");
 const menuSignout    = $("menu-signout");
@@ -126,7 +125,6 @@ const settingsScreen       = $("settings-screen");
 const settingsBack         = $("settings-back");
 const settingsNavItems     = document.querySelectorAll(".settings-nav-item");
 const settingsPanels       = document.querySelectorAll(".settings-panel");
-const settingsThemeBtn     = $("settings-theme-btn");
 const settingsTasks        = $("settings-tasks");
 const settingsFamiliarityOptions = $("familiarity-options");
 const familiarityCustomInput     = $("familiarity-custom-input");
@@ -147,11 +145,6 @@ document.addEventListener("click", () => {
   accountBtn.removeAttribute("data-open");
 });
 
-menuTheme.addEventListener("click", () => {
-  accountMenu.classList.remove("show");
-  accountBtn.removeAttribute("data-open");
-  toggleTheme();
-});
 menuSettings.addEventListener("click", () => {
   accountMenu.classList.remove("show");
   accountBtn.removeAttribute("data-open");
@@ -170,7 +163,6 @@ let activeId    = null;
 let pendingFile = null;
 let pendingImageContext = null;
 let isStreaming = false;
-let lightMode   = false;
 let saveTimer   = null;
 let learningPrefs = null;
 let familiarityDomains = [];
@@ -471,12 +463,11 @@ function openSettings() {
   if (currentUser) settingsAccountEmail.textContent = currentUser.email || "";
   renderSettingsLearningTasks();
   renderFamiliarityPanel();
-  switchSettingsPanel("appearance");
+  switchSettingsPanel("learning");
   settingsScreen.classList.add("visible");
 }
 function closeSettings() { settingsScreen.classList.remove("visible"); }
 settingsBack.addEventListener("click", closeSettings);
-settingsThemeBtn.addEventListener("click", toggleTheme);
 
 async function doSignOut() {
   if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
@@ -1521,18 +1512,6 @@ function exportChat() {
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([JSON.stringify(chat,null,2)],{type:"application/json"}));
   a.download=`sputta-${Date.now()}.json`; a.click();
-}
-function toggleTheme() {
-  lightMode=!lightMode;
-  const r=document.documentElement.style;
-  if(lightMode){
-    r.setProperty("--bg","#f4f1ea"); r.setProperty("--surface","#fffef9"); r.setProperty("--surface2","#ede9df");
-    r.setProperty("--border","#ddd8cc"); r.setProperty("--border2","#ccc8be"); r.setProperty("--text","#1a1a18");
-    r.setProperty("--muted","#7a7568"); r.setProperty("--faint","#b0ab9f");
-    r.setProperty("--green","#4a7c10"); r.setProperty("--green-dim","#e4edcc");
-  } else {
-    ["--bg","--surface","--surface2","--border","--border2","--text","--muted","--faint","--green","--green-dim"].forEach(v=>r.removeProperty(v));
-  }
 }
 
 const searchBtn   = document.getElementById("search-btn");
