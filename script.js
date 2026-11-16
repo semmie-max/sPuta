@@ -652,6 +652,7 @@ async function loadChatsFromFirestore() {
     const cached = readOfflineCopy();
     if (cached) chats = cached;
   }
+}
 function scheduleSave(chatId) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => persistChat(chatId), 800);
