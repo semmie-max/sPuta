@@ -1064,6 +1064,26 @@ textarea::placeholder { color: var(--faint); }
 }
 .check-understanding-btn:hover { background: var(--green-dim); }
 
+.bubble-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.bubble-actions .check-understanding-btn { margin-top: 0; }
+.focus-read-btn { background: none; border: 1px solid var(--border2); color: var(--muted); border-radius: 999px; padding: 7px 16px; font-family: var(--ff-body); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.focus-read-btn:hover { border-color: var(--green); color: var(--green); }
+
+#focus-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9300; display: none; flex-direction: column; }
+#focus-screen.visible { display: flex; }
+.focus-top { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; }
+.focus-count { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.focus-close { width: 34px; height: 34px; border: 1px solid var(--border2); border-radius: 8px; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; transition: all 0.15s; }
+.focus-close:hover { border-color: var(--green); color: var(--green); }
+.focus-bar { height: 4px; margin: 0 24px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+.focus-bar-fill { height: 100%; width: 0; background: var(--green); border-radius: 999px; transition: width 0.3s cubic-bezier(0.22,1,0.36,1); }
+.focus-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+.focus-text { max-width: 640px; font-size: clamp(20px, 3.4vw, 28px); line-height: 1.7; color: var(--text); text-align: center; }
+.focus-nav { display: flex; justify-content: center; gap: 12px; padding: 0 24px 40px; }
+.focus-nav .pi-pill-btn { height: 44px; padding: 0 24px; font-size: 14px; }
+.focus-next { height: 44px; padding: 0 32px; border: none; border-radius: 10px; background: var(--green); color: #0e0e0d; font-family: var(--ff-body); font-size: 14px; font-weight: 700; cursor: pointer; transition: filter 0.15s; }
+.focus-next:hover { filter: brightness(1.08); }
+
 .quiz-loading {
   max-width: 720px; margin: 0 auto 20px; padding: 0 20px;
   font-size: 13px; color: var(--muted);

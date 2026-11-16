@@ -1,4 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse
+import time
+from collections import defaultdict, deque
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -21,6 +24,26 @@ app.add_middleware(
 )
 
 client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+hits = defaultdict(deque)
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    if request.method == "POST":
+        forwarded = request.headers.get("x-forwarded-for")
+        ip = (forwarded or (request.client.host if request.client else "unknown")).split(",")[0].strip()
+        now = time.time()
+        q = hits[ip]
+        while q and now - q[0] > 60:
+            q.popleft()
+        if len(q) >= 30:
+            return JSONResponse(
+                {"detail": "Too many requests. Please wait a minute."},
+                status_code=429,
+                headers={"Access-Control-Allow-Origin": "*"},
+            )
+        q.append(now)
+    return await call_next(request)
 
 import re
 
@@ -67,13 +90,14 @@ async def chat(
     message: str = Form(...),
     history: str = Form(default="[]"),
     prefs: str = Form(default=""),
+    plain: str = Form(default=""),
 ):
     chat_history = json.loads(history)
     messages = [{"role": "system", "content": build_system(prefs)}]
     messages += chat_history
 
     user_message = message
-    if is_math_question(message):
+    if plain != "1" and len(message) <= 300 and is_math_question(message):
         solved = solve_math(message)
         if solved.get("success"):
             user_message = (
@@ -294,6 +318,84 @@ async def read_image(
         reply = clean_reply(response.choices[0].message)
         return {"reply": reply}
 
+    except Exception as e:
+        return {"error": str(e)}
+
+
+CITE_SYSTEM = """You are a careful academic citation formatter.
+
+Write exactly two parts, each on its own line:
+Reference: the full reference list entry
+In-text: the matching in-text citation
+
+Rules:
+- Use ONLY the details the user gives. Never invent authors, dates, page numbers, DOIs, publishers or titles.
+- If a detail needed by the style is missing, write [missing: detail name] in its place.
+- If only a link is given, use only what can be read from the link itself and mark everything else as missing.
+- Follow the requested style exactly.
+- Plain text only. No commentary, no explanations, no markdown."""
+
+
+@app.post("/cite")
+async def cite(
+    details: str = Form(...),
+    style: str = Form(default="APA 7"),
+):
+    if style not in {"APA 7", "MLA 9", "Harvard", "Chicago", "IEEE"}:
+        style = "APA 7"
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[
+                {"role": "system", "content": CITE_SYSTEM},
+                {"role": "user", "content": f"Style: {style}\n\nSource details:\n{details[:3000]}"},
+            ],
+            max_tokens=1024,
+        )
+        return {"reply": clean_reply(response.choices[0].message)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/ocr")
+async def ocr(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        if len(contents) > 8_000_000:
+            return {"error": "Image is too large. Try one under 8 MB."}
+        base64_image = base64.b64encode(contents).decode("utf-8")
+
+        filename = file.filename.lower()
+        if filename.endswith(".png"):
+            media_type = "image/png"
+        elif filename.endswith(".gif"):
+            media_type = "image/gif"
+        elif filename.endswith(".webp"):
+            media_type = "image/webp"
+        else:
+            media_type = "image/jpeg"
+
+        response = client.chat.completions.create(
+            model="qwen/qwen3.6-27b",
+            reasoning_format="hidden",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{media_type};base64,{base64_image}"}
+                        },
+                        {
+                            "type": "text",
+                            "text": "Transcribe all the text in this image exactly as written, including handwriting. Keep the line breaks. Do not explain, summarize or correct anything. If a word cannot be read, write [unclear]. Reply with only the transcribed text."
+                        }
+                    ]
+                }
+            ],
+            max_tokens=3072,
+        )
+        return {"reply": clean_reply(response.choices[0].message)}
     except Exception as e:
         return {"error": str(e)}
 

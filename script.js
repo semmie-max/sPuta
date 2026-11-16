@@ -770,6 +770,7 @@ async function handleEnhance(){
     const formData = new FormData();
     formData.append("message", `Rewrite the following so it is clearer and better phrased. Keep the same intent and language. Reply with ONLY the rewritten text:\n\n${original}`);
     formData.append("history", "[]");
+    formData.append("plain", "1");
     const res = await fetch(API_URL, { method:"POST", mode:"cors", body: formData });
     const data = await res.json();
     if(!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
@@ -1238,9 +1239,15 @@ function addBubble(role, html, responseTime="", explanationForQuiz=null) {
   if(role==="user"){ wrap.className="msg-wrap user"; wrap.innerHTML=`<div class="bubble-user">${html}</div>`; }
   else {
     wrap.className="msg-wrap ai";
-    wrap.innerHTML=`<div class="ai-header"><div class="ai-badge">Simple</div><div class="ai-line"></div></div><div class="bubble-ai">${html}</div>${responseTime ? `<div class="response-timer">⏱ ${responseTime}s</div>` : ""}${explanationForQuiz ? `<button type="button" class="check-understanding-btn">Check Understanding</button>` : ""}`;
+    wrap.innerHTML=`<div class="ai-header"><div class="ai-badge">Simple</div><div class="ai-line"></div></div><div class="bubble-ai">${html}</div>${responseTime ? `<div class="response-timer">⏱ ${responseTime}s</div>` : ""}<div class="bubble-actions"><button type="button" class="focus-read-btn">Focus reading</button>${explanationForQuiz ? `<button type="button" class="check-understanding-btn">Check Understanding</button>` : ""}</div>`;
   }
   messagesEl.appendChild(wrap);
+  const focusBtn = wrap.querySelector(".focus-read-btn");
+  if(focusBtn){
+    const bubbleText = wrap.querySelector(".bubble-ai").innerText || "";
+    if(bubbleText.trim().length < 160) focusBtn.remove();
+    else focusBtn.addEventListener("click", () => openFocusReader(wrap.querySelector(".bubble-ai").innerText));
+  }
   if(explanationForQuiz){
     wrap.querySelector(".check-understanding-btn").addEventListener("click", (e) => {
       e.target.remove();
@@ -1724,9 +1731,7 @@ async function runOcr(mode) {
     } else {
       const fd = new FormData();
       fd.append("file", ocrImage);
-      fd.append("question", "Transcribe all the text in this image exactly as written, including handwriting. Reply with only the transcribed text and nothing else.");
-      fd.append("prefs", "");
-      const res = await fetch(`${API_BASE}/read-image`, { method: "POST", mode: "cors", body: fd });
+      const res = await fetch(`${API_BASE}/ocr`, { method: "POST", mode: "cors", body: fd });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
       text = data.reply || "";
@@ -1774,12 +1779,11 @@ citeBtn.addEventListener("click", async () => {
   citeOut.value = "Working...";
   try {
     const fd = new FormData();
-    fd.append("message", `Write a ${style} reference for the source below, followed by the matching in-text citation. Use ONLY the details given. If something is missing, write [missing: field name] instead of guessing. Reply with ONLY the citation text.\n\n${details}`);
-    fd.append("history", "[]");
-    fd.append("prefs", "");
-    const res = await fetch(API_URL, { method: "POST", mode: "cors", body: fd });
+    fd.append("details", details);
+    fd.append("style", style);
+    const res = await fetch(`${API_BASE}/cite`, { method: "POST", mode: "cors", body: fd });
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+    if (!res.ok || data.error) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
     citeOut.value = (data?.reply || "").trim();
   } catch (err) {
     citeOut.value = "";
@@ -1828,4 +1832,61 @@ offlineToggle.addEventListener("change", () => {
     try { localStorage.setItem("sputta-offline", "0"); } catch (_) {}
     toast("Offline copy removed from this device.");
   }
+});
+
+/* ---- Focus reading ---- */
+const focusScreen = $("focus-screen");
+const focusText   = $("focus-text");
+const focusCount  = $("focus-count");
+const focusBar    = $("focus-bar-fill");
+const focusPrev   = $("focus-prev");
+const focusNext   = $("focus-next");
+let focusChunks = [];
+let focusIndex  = 0;
+
+function buildFocusChunks(raw) {
+  const clean = raw.replace(/[*_#>`]/g, "").replace(/\r/g, "");
+  const paragraphs = clean.split(/\n+/).map(p => p.trim()).filter(Boolean);
+  const chunks = [];
+  paragraphs.forEach(p => {
+    const sentences = p.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [p];
+    let current = "";
+    sentences.forEach(s => {
+      const piece = s.trim();
+      if (!piece) return;
+      if (current && (current + " " + piece).length > 180) { chunks.push(current); current = piece; }
+      else current = current ? current + " " + piece : piece;
+    });
+    if (current) chunks.push(current);
+  });
+  return chunks;
+}
+function renderFocus() {
+  focusText.textContent = focusChunks[focusIndex] || "";
+  focusCount.textContent = `${focusIndex + 1} of ${focusChunks.length}`;
+  focusBar.style.width = `${((focusIndex + 1) / focusChunks.length) * 100}%`;
+  focusPrev.disabled = focusIndex === 0;
+  focusNext.textContent = focusIndex === focusChunks.length - 1 ? "Done" : "Next";
+}
+function openFocusReader(raw) {
+  focusChunks = buildFocusChunks(raw || "");
+  if (!focusChunks.length) return;
+  focusIndex = 0;
+  renderFocus();
+  focusScreen.classList.add("visible");
+}
+function closeFocusReader() { focusScreen.classList.remove("visible"); }
+function focusStep(dir) {
+  if (dir > 0 && focusIndex === focusChunks.length - 1) { closeFocusReader(); return; }
+  focusIndex = Math.max(0, Math.min(focusChunks.length - 1, focusIndex + dir));
+  renderFocus();
+}
+focusPrev.addEventListener("click", () => focusStep(-1));
+focusNext.addEventListener("click", () => focusStep(1));
+$("focus-close").addEventListener("click", closeFocusReader);
+document.addEventListener("keydown", e => {
+  if (!focusScreen.classList.contains("visible")) return;
+  if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); focusStep(1); }
+  else if (e.key === "ArrowLeft") focusStep(-1);
+  else if (e.key === "Escape") closeFocusReader();
 });

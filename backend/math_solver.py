@@ -38,7 +38,7 @@ def is_math_question(text):
         "laplace", "fourier", "simplify", "factor", "expand", "evaluate",
         "differential equation", "ode"
     ]
-    if any(k in t for k in keywords):
+    if any(re.search(rf"\b{re.escape(k)}s?\b", t) for k in keywords):
         return True
     if re.search(r"\b[a-zA-Z]'{1,3}(?![a-zA-Z])", text):
         return True
@@ -245,7 +245,7 @@ def do_ode(text):
 def solve_math(text):
     t = text.lower()
     try:
-        if ("differential equation" in t or "ode" in t
+        if ("differential equation" in t or re.search(r"\bode\b", t)
                 or re.search(r"\b[a-zA-Z]'{1,3}(?![a-zA-Z])", text)
                 or re.search(r"d\w+/d\w+", text)):
             data = do_ode(text)
