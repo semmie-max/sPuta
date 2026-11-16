@@ -1236,3 +1236,7 @@ textarea::placeholder { color: var(--faint); }
   .familiarity-custom-row { flex-direction: column; }
   .familiarity-custom-add-btn { padding: 10px; }
 }
+
+@media (max-width: 520px) {
+  .chips-row { display: none; }
+}
