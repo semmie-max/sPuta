@@ -420,6 +420,8 @@ function buildPrefsInstruction() {
   if (familiarityDomains && familiarityDomains.length) {
     lines.push("- Whenever it helps explain a difficult concept, reach for analogies and examples from these familiar areas: " + familiarityDomains.join(", ") + ".");
   }
+  const lang = localStorage.getItem("sputta-lang");
+  if (lang) lines.push("- Write the whole reply in " + lang + ". If a difficult term has no good " + lang + " word, keep the English term and explain it in " + lang + ".");
   if (!lines.length) return "";
   return "The user has told us how they learn best. Follow these rules in every reply:\n" + lines.join("\n");
 }
@@ -502,6 +504,7 @@ settingsBack.addEventListener("click", closeSettings);
 
 async function doSignOut() {
   if (!(await confirmToast("Sign out?", "You'll need to sign back in to see your chats."))) return;
+  clearOfflineCopy();
   await signOut(auth);
   chats = {}; activeId = null;
   messagesEl.innerHTML = ""; historyList.innerHTML = "";
@@ -641,22 +644,28 @@ async function loadChatsFromFirestore() {
   chats = {};
   try {
     const q   = query(chatsCol(), orderBy("ts", "desc"));
+    if (!navigator.onLine) throw new Error("offline");
     const snap= await getDocs(q);
     snap.forEach(d => { chats[d.id] = d.data(); });
-  } catch (_) {}
-}
+    saveOfflineCopy();
+  } catch (_) {
+    const cached = readOfflineCopy();
+    if (cached) chats = cached;
+  }
 function scheduleSave(chatId) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => persistChat(chatId), 800);
 }
 async function persistChat(chatId) {
   if (!currentUser || !chats[chatId]) return;
+  saveOfflineCopy();
   try {
     await setDoc(doc(db, "users", currentUser.uid, "chats", chatId), chats[chatId]);
   } catch (_) {}
 }
 async function deleteChat(chatId) {
   delete chats[chatId];
+  saveOfflineCopy();
   try { await deleteDoc(doc(db, "users", currentUser.uid, "chats", chatId)); } catch (_) {}
 }
 
@@ -1670,3 +1679,152 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     toast("Voice input is not supported on this browser. Try Chrome.");
   });
 }
+
+/* ---- Plugins ---- */
+const pluginsBtn    = $("plugins-btn");
+const pluginsScreen = $("plugins-screen");
+const pluginsClose  = $("plugins-close");
+
+function closePlugins() { pluginsScreen.classList.remove("visible"); }
+pluginsBtn.addEventListener("click", () => { closeSidebar(); pluginsScreen.classList.add("visible"); });
+pluginsClose.addEventListener("click", closePlugins);
+pluginsScreen.addEventListener("click", e => { if (e.target === pluginsScreen) closePlugins(); });
+
+/* OCR */
+const ocrFile    = $("ocr-file");
+const ocrName    = $("ocr-file-name");
+const ocrPrinted = $("ocr-printed");
+const ocrHand    = $("ocr-handwriting");
+const ocrOut     = $("ocr-output");
+const ocrActions = $("ocr-actions");
+let ocrImage = null;
+
+$("ocr-pick").addEventListener("click", () => ocrFile.click());
+ocrFile.addEventListener("change", e => {
+  const f = e.target.files[0];
+  ocrFile.value = "";
+  if (!f) return;
+  if (!f.type.startsWith("image/")) { toast("Please choose an image."); return; }
+  ocrImage = f;
+  ocrName.textContent = f.name;
+  ocrOut.value = "";
+  ocrActions.style.display = "none";
+});
+
+async function runOcr(mode) {
+  if (!ocrImage) { toast("Choose an image first."); return; }
+  ocrPrinted.disabled = true; ocrHand.disabled = true;
+  ocrOut.value = "Reading...";
+  try {
+    let text = "";
+    if (mode === "printed") {
+      const result = await Tesseract.recognize(ocrImage, "eng", { logger: () => {} });
+      text = result.data.text;
+    } else {
+      const fd = new FormData();
+      fd.append("file", ocrImage);
+      fd.append("question", "Transcribe all the text in this image exactly as written, including handwriting. Reply with only the transcribed text and nothing else.");
+      fd.append("prefs", "");
+      const res = await fetch(`${API_BASE}/read-image`, { method: "POST", mode: "cors", body: fd });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data?.error || data?.detail || `HTTP ${res.status}`);
+      text = data.reply || "";
+    }
+    text = text.trim();
+    if (!text) throw new Error("No readable text found.");
+    ocrOut.value = text;
+    ocrActions.style.display = "flex";
+  } catch (err) {
+    ocrOut.value = "";
+    toast("OCR failed: " + err.message);
+  } finally {
+    ocrPrinted.disabled = false; ocrHand.disabled = false;
+  }
+}
+ocrPrinted.addEventListener("click", () => runOcr("printed"));
+ocrHand.addEventListener("click", () => runOcr("handwriting"));
+$("ocr-copy").addEventListener("click", () => {
+  navigator.clipboard.writeText(ocrOut.value).then(() => toast("Copied."), () => toast("Could not copy."));
+});
+$("ocr-use").addEventListener("click", () => {
+  msgField.textContent = ocrOut.value;
+  updateFieldEmptyState();
+  closePlugins();
+  msgField.focus();
+  placeCaretAtEnd(msgField);
+});
+
+/* Translation */
+const langSelect = $("lang-select");
+langSelect.value = localStorage.getItem("sputta-lang") || "";
+langSelect.addEventListener("change", () => {
+  try { localStorage.setItem("sputta-lang", langSelect.value); } catch (_) {}
+  toast(langSelect.value ? `Explanations will now be in ${langSelect.value}.` : "Explanations are back to English.");
+});
+
+/* Citations */
+const citeBtn = $("cite-generate");
+const citeOut = $("cite-output");
+citeBtn.addEventListener("click", async () => {
+  const details = $("cite-input").value.trim();
+  if (!details) { toast("Add the source details first."); return; }
+  const style = $("cite-style").value;
+  citeBtn.disabled = true;
+  citeOut.value = "Working...";
+  try {
+    const fd = new FormData();
+    fd.append("message", `Write a ${style} reference for the source below, followed by the matching in-text citation. Use ONLY the details given. If something is missing, write [missing: field name] instead of guessing. Reply with ONLY the citation text.\n\n${details}`);
+    fd.append("history", "[]");
+    fd.append("prefs", "");
+    const res = await fetch(API_URL, { method: "POST", mode: "cors", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+    citeOut.value = (data?.reply || "").trim();
+  } catch (err) {
+    citeOut.value = "";
+    toast("Could not generate: " + err.message);
+  } finally {
+    citeBtn.disabled = false;
+  }
+});
+$("cite-copy").addEventListener("click", () => {
+  if (!citeOut.value) return;
+  navigator.clipboard.writeText(citeOut.value).then(() => toast("Copied."), () => toast("Could not copy."));
+});
+
+/* Offline storage */
+function offlineKey() { return currentUser ? "sputta-offline-" + currentUser.uid : null; }
+function offlineEnabled() { return localStorage.getItem("sputta-offline") === "1"; }
+function saveOfflineCopy() {
+  if (!offlineEnabled() || !currentUser) return;
+  try { localStorage.setItem(offlineKey(), JSON.stringify(chats)); } catch (_) {}
+}
+function readOfflineCopy() {
+  if (!offlineEnabled() || !currentUser) return null;
+  try {
+    const raw = localStorage.getItem(offlineKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+function clearOfflineCopy() {
+  if (!currentUser) return;
+  try { localStorage.removeItem(offlineKey()); } catch (_) {}
+}
+const offlineToggle = $("offline-toggle");
+offlineToggle.checked = offlineEnabled();
+offlineToggle.addEventListener("change", () => {
+  if (offlineToggle.checked) {
+    if (!currentUser) {
+      offlineToggle.checked = false;
+      toast("Sign in first so there is something to keep.");
+      return;
+    }
+    try { localStorage.setItem("sputta-offline", "1"); } catch (_) {}
+    saveOfflineCopy();
+    toast("Your chats are now kept on this device.");
+  } else {
+    clearOfflineCopy();
+    try { localStorage.setItem("sputta-offline", "0"); } catch (_) {}
+    toast("Offline copy removed from this device.");
+  }
+});
